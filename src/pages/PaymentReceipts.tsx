@@ -5,7 +5,7 @@ import { pdf } from '@react-pdf/renderer';
 import { useReceipts } from '../hooks/useReceipts';
 import type { PaymentReceipt } from '../hooks/useReceipts';
 import { useBusinessSettings } from '../hooks/useBusinessSettings';
-import { ReceiptPDF } from '../components/receipt/ReceiptPDF';
+import ReceiptPDF from '../components/receipt/ReceiptPDF';
 import { TopBar } from '../components/layout/TopBar';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
@@ -49,7 +49,7 @@ export function PaymentReceipts() {
 
   async function handleDownloadPDF(receipt: PaymentReceipt) {
     if (!settings) return;
-    const blob = await pdf(<ReceiptPDF receipt={receipt} businessSettings={settings} />).toBlob();
+    const blob = await pdf(<ReceiptPDF receipt={receipt} client={receipt.client as import('../types').Client ?? null} />).toBlob();
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;

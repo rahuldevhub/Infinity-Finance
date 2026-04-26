@@ -1,6 +1,5 @@
-import React from 'react'
 import { Document, Page, View, Text, Image, StyleSheet } from '@react-pdf/renderer'
-import { PaymentReceipt, Client } from '../../types'
+import type { PaymentReceipt, Client } from '../../types'
 import { getBrandDetails } from '../../constants/businessDetails'
 import { getLogo, PLACEHOLDER_LOGOS } from '../../utils/logos'
 import { amountToWords } from '../../utils/amountToWords'

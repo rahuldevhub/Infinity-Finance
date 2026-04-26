@@ -4,7 +4,7 @@ import { ArrowLeft, Download } from 'lucide-react';
 import { pdf } from '@react-pdf/renderer';
 import { useReceipts, generateReceiptNumber } from '../hooks/useReceipts';
 import type { PaymentMode } from '../hooks/useReceipts';
-import { ReceiptPDF } from '../components/receipt/ReceiptPDF';
+import ReceiptPDF from '../components/receipt/ReceiptPDF';
 import { useClients } from '../hooks/useClients';
 import { useBusinessSettings } from '../hooks/useBusinessSettings';
 import { useAuth } from '../hooks/useAuth';
@@ -242,7 +242,7 @@ export function CreateReceipt() {
         ? { name: clientNameOverride, email: null, address: null }
         : null;
       const blob = await pdf(
-        <ReceiptPDF receipt={{ ...savedReceipt, client: clientForPDF }} businessSettings={settings} />
+        <ReceiptPDF receipt={{ ...savedReceipt, client: clientForPDF }} client={clientForPDF} />
       ).toBlob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
