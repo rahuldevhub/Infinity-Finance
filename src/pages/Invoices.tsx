@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Download, CheckCircle, Eye, Trash2, BadgeCheck, Pencil, ChevronDown } from 'lucide-react';
-import { pdf } from '@react-pdf/renderer';
+import { usePDFDownload } from '../hooks/usePDFDownload';
 import { useInvoices } from '../hooks/useInvoices';
 import { useBusinessSettings } from '../hooks/useBusinessSettings';
 import type { Invoice } from '../types';
@@ -16,6 +16,7 @@ import { formatCurrency, formatDate, getMonthRange } from '../utils/formatters';
 
 export function Invoices() {
   const navigate = useNavigate();
+  const { downloadPDF, loading: pdfLoading } = usePDFDownload();
   const today = new Date();
   const [activeTab, setActiveTab] = useState<'gst' | 'non_gst'>('gst');
   const [filterYear, setFilterYear] = useState(today.getFullYear());
@@ -48,15 +49,10 @@ export function Invoices() {
 
   async function handleDownloadPDF(inv: Invoice) {
     if (!settings) return;
-    const blob = inv.invoice_type === 'non_gst'
-      ? await pdf(<NonGSTInvoicePDF invoice={inv} settings={settings} />).toBlob()
-      : await pdf(<InvoicePDF invoice={inv} settings={settings} />).toBlob();
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${inv.invoice_number}.pdf`;
-    a.click();
-    URL.revokeObjectURL(url);
+    const element = inv.invoice_type === 'non_gst'
+      ? <NonGSTInvoicePDF invoice={inv} settings={settings} />
+      : <InvoicePDF invoice={inv} settings={settings} />;
+    await downloadPDF(element, `${inv.invoice_number}.pdf`);
   }
 
   async function handleMarkPaid(id: string) {
@@ -216,7 +212,7 @@ export function Invoices() {
                         <button onClick={() => navigate(`/invoices/${inv.id}/edit`)} className="p-1.5 rounded hover:bg-blue-50 text-blue-500" title="Edit">
                           <Pencil size={15} />
                         </button>
-                        <button onClick={() => handleDownloadPDF(inv)} className="p-1.5 rounded hover:bg-gray-100 text-gray-500" title="Download PDF">
+                        <button onClick={() => handleDownloadPDF(inv)} className="p-1.5 rounded hover:bg-gray-100 text-gray-500 disabled:opacity-50" disabled={pdfLoading} title="Download PDF">
                           <Download size={15} />
                         </button>
                         {inv.payment_status !== 'paid' && (
@@ -341,8 +337,8 @@ export function Invoices() {
 
             <div className="flex gap-2 pt-2">
               {settings && (
-                <Button onClick={() => handleDownloadPDF(viewInvoice)}>
-                  <Download size={16} /> Download PDF
+                <Button onClick={() => handleDownloadPDF(viewInvoice)} disabled={pdfLoading}>
+                  <Download size={16} /> {pdfLoading ? 'Generating…' : 'Download PDF'}
                 </Button>
               )}
               {viewInvoice.payment_status !== 'paid' && (

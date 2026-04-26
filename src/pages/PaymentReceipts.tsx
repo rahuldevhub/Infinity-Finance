@@ -1,10 +1,9 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Download, Edit, Trash2 } from 'lucide-react';
-import { pdf } from '@react-pdf/renderer';
+import { usePDFDownload } from '../hooks/usePDFDownload';
 import { useReceipts } from '../hooks/useReceipts';
 import type { PaymentReceipt } from '../hooks/useReceipts';
-import { useBusinessSettings } from '../hooks/useBusinessSettings';
 import ReceiptPDF from '../components/receipt/ReceiptPDF';
 import { TopBar } from '../components/layout/TopBar';
 import { Button } from '../components/ui/Button';
@@ -14,6 +13,7 @@ import { formatCurrency, formatDate, getMonthRange } from '../utils/formatters';
 
 export function PaymentReceipts() {
   const navigate = useNavigate();
+  const { downloadPDF, loading: pdfLoading } = usePDFDownload();
   const today = new Date();
 
   const [filterYear, setFilterYear] = useState(today.getFullYear());
@@ -28,7 +28,6 @@ export function PaymentReceipts() {
     end,
     sub_brand: filterBrand || undefined,
   });
-  const { settings } = useBusinessSettings();
 
   const months = Array.from({ length: 12 }, (_, i) => ({
     value: String(i),
@@ -48,14 +47,10 @@ export function PaymentReceipts() {
   const topMode = Object.entries(modeCount).sort((a, b) => b[1] - a[1])[0]?.[0] || '—';
 
   async function handleDownloadPDF(receipt: PaymentReceipt) {
-    if (!settings) return;
-    const blob = await pdf(<ReceiptPDF receipt={receipt} client={receipt.client as import('../types').Client ?? null} />).toBlob();
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `Receipt-${receipt.receipt_number}.pdf`;
-    a.click();
-    URL.revokeObjectURL(url);
+    await downloadPDF(
+      <ReceiptPDF receipt={receipt} client={receipt.client as import('../types').Client ?? null} />,
+      `Receipt-${receipt.receipt_number}.pdf`
+    );
   }
 
   async function handleDelete() {
@@ -202,7 +197,8 @@ export function PaymentReceipts() {
                           <div className="flex items-center justify-end gap-1">
                             <button
                               onClick={() => handleDownloadPDF(receipt)}
-                              className="p-1.5 text-gray-400 hover:text-blue-600 rounded hover:bg-blue-50"
+                              className="p-1.5 text-gray-400 hover:text-blue-600 rounded hover:bg-blue-50 disabled:opacity-50"
+                              disabled={pdfLoading}
                               title="Download PDF"
                             >
                               <Download size={15} />

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Download, Eye, Edit, Trash2, CheckCircle, FileCheck, Receipt, ChevronDown } from 'lucide-react';
-import { pdf } from '@react-pdf/renderer';
+import { usePDFDownload } from '../hooks/usePDFDownload';
 import { useProforma } from '../hooks/useProforma';
 import type { ProformaInvoice } from '../hooks/useProforma';
 import { useBusinessSettings } from '../hooks/useBusinessSettings';
@@ -24,6 +24,7 @@ const selectClass = 'px-3 py-2 border border-gray-300 rounded-lg text-sm focus:o
 
 export function ProformaInvoices() {
   const navigate = useNavigate();
+  const { downloadPDF, loading: pdfLoading } = usePDFDownload();
   const today = new Date();
 
   const [filterYear, setFilterYear]   = useState(today.getFullYear());
@@ -56,14 +57,11 @@ export function ProformaInvoices() {
 
   async function handleDownloadPDF(p: ProformaInvoice) {
     if (!settings) return;
-    const blob = await pdf(<ProformaPDF proforma={p} businessSettings={settings} />).toBlob();
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
     const clientName = (p.client?.name || p.client_name_override || '').replace(/[^a-zA-Z0-9]/g, '');
-    a.download = `Proforma-${p.proforma_number}${clientName ? '-' + clientName : ''}.pdf`;
-    a.click();
-    URL.revokeObjectURL(url);
+    await downloadPDF(
+      <ProformaPDF proforma={p} businessSettings={settings} />,
+      `Proforma-${p.proforma_number}${clientName ? '-' + clientName : ''}.pdf`
+    );
   }
 
   async function handleMarkPaid(p: ProformaInvoice) {
@@ -218,7 +216,7 @@ export function ProformaInvoices() {
                         <button onClick={() => setViewItem(p)} className="p-1.5 rounded hover:bg-gray-100 text-gray-500" title="View">
                           <Eye size={15} />
                         </button>
-                        <button onClick={() => handleDownloadPDF(p)} className="p-1.5 rounded hover:bg-gray-100 text-gray-500" title="Download PDF">
+                        <button onClick={() => handleDownloadPDF(p)} className="p-1.5 rounded hover:bg-gray-100 text-gray-500 disabled:opacity-50" disabled={pdfLoading} title="Download PDF">
                           <Download size={15} />
                         </button>
                         {p.status === 'sent' && (
@@ -331,8 +329,8 @@ export function ProformaInvoices() {
 
             <div className="flex gap-2 pt-2">
               {settings && (
-                <Button onClick={() => handleDownloadPDF(viewItem)}>
-                  <Download size={16} /> Download PDF
+                <Button onClick={() => handleDownloadPDF(viewItem)} disabled={pdfLoading}>
+                  <Download size={16} /> {pdfLoading ? 'Generating…' : 'Download PDF'}
                 </Button>
               )}
               {viewItem.status === 'sent' && (

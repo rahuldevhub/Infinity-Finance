@@ -4,6 +4,9 @@ import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig({
+  optimizeDeps: {
+    include: ['@react-pdf/renderer'],
+  },
   plugins: [
     react(),
     tailwindcss(),
