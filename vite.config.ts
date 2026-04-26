@@ -6,6 +6,7 @@ import { VitePWA } from 'vite-plugin-pwa'
 export default defineConfig({
   define: {
     global: 'globalThis',
+    'process.env': {},
   },
   optimizeDeps: {
     include: ['@react-pdf/renderer'],
@@ -13,6 +14,11 @@ export default defineConfig({
   resolve: {
     alias: {
       buffer: 'buffer',
+    },
+  },
+  build: {
+    commonjsOptions: {
+      include: [/node_modules/],
     },
   },
   plugins: [

@@ -1,5 +1,7 @@
 import { Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/renderer';
 import type { Invoice, BusinessSettings } from '../../types';
+import { registerFonts } from '../../utils/pdfFonts';
+registerFonts();
 import { getLogo, PLACEHOLDER_LOGOS } from '../../utils/logos';
 import { BUSINESS, getBrandDetails } from '../../constants/businessDetails';
 import { amountToWords } from '../../utils/amountToWords';
@@ -30,7 +32,7 @@ const C = { qty: 38, unit: 38, rate: 70, amount: 75 };
 // ── Styles ────────────────────────────────────────────────────────────────────
 
 const s = StyleSheet.create({
-  page: { fontFamily: 'Helvetica', color: DARK, backgroundColor: 'white', paddingBottom: 72 },
+  page: { fontFamily: 'Roboto', color: DARK, backgroundColor: 'white', paddingBottom: 72 },
   stripe: { height: 4 },
 
   titleBar: {
@@ -39,16 +41,16 @@ const s = StyleSheet.create({
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     paddingHorizontal: PAD, paddingVertical: 10,
   },
-  titleText: { color: DARK, fontSize: 14, fontFamily: 'Helvetica-Bold', letterSpacing: 2 },
+  titleText: { color: DARK, fontSize: 14, fontFamily: 'Roboto', fontWeight: 'bold', letterSpacing: 2 },
   titleMeta: { fontSize: 9, color: MUTED, textAlign: 'right', marginBottom: 1 },
 
   billingBox: { flex: 1, borderWidth: 1, borderColor: BDR, borderStyle: 'solid', padding: 10 },
-  billingLabel: { fontSize: 8, fontFamily: 'Helvetica-Bold', color: MUTED, letterSpacing: 1.5, marginBottom: 5 },
-  billingName: { fontSize: 12, fontFamily: 'Helvetica-Bold', color: DARK },
+  billingLabel: { fontSize: 8, fontFamily: 'Roboto', fontWeight: 'bold', color: MUTED, letterSpacing: 1.5, marginBottom: 5 },
+  billingName: { fontSize: 12, fontFamily: 'Roboto', fontWeight: 'bold', color: DARK },
   billingAddr: { fontSize: 9, color: '#444444', marginTop: 2 },
   billingContact: { fontSize: 9, color: '#666666', marginTop: 2 },
 
-  th: { fontSize: 8, fontFamily: 'Helvetica-Bold', color: 'white' },
+  th: { fontSize: 8, fontFamily: 'Roboto', fontWeight: 'bold', color: 'white' },
   td: { fontSize: 9, color: '#2d2d2d' },
 
   summaryRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 3 },
@@ -61,9 +63,9 @@ const s = StyleSheet.create({
     borderWidth: 1, borderColor: '#bfdbfe', borderStyle: 'solid',
     padding: 10,
   },
-  paymentLabel: { fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#1d4ed8', letterSpacing: 1.5, marginBottom: 6 },
+  paymentLabel: { fontSize: 8, fontFamily: 'Roboto', fontWeight: 'bold', color: '#1d4ed8', letterSpacing: 1.5, marginBottom: 6 },
   paymentRow: { fontSize: 9, color: '#2d2d2d', marginBottom: 3 },
-  paymentRowBold: { fontSize: 9, fontFamily: 'Helvetica-Bold', color: '#2d2d2d', marginBottom: 3 },
+  paymentRowBold: { fontSize: 9, fontFamily: 'Roboto', fontWeight: 'bold', color: '#2d2d2d', marginBottom: 3 },
 
   signBox: {
     flex: 10,
@@ -77,7 +79,7 @@ const s = StyleSheet.create({
     paddingHorizontal: PAD, paddingVertical: 8, backgroundColor: 'white',
   },
   footerText: { fontSize: 8, color: MUTED },
-  footerNote: { fontSize: 8, color: '#aaaaaa', fontFamily: 'Helvetica-Oblique', textAlign: 'center', marginTop: 3 },
+  footerNote: { fontSize: 8, color: '#aaaaaa', fontFamily: 'Roboto', fontStyle: 'italic', textAlign: 'center', marginTop: 3 },
 });
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -107,7 +109,7 @@ export function NonGSTInvoicePDF({ invoice }: NonGSTInvoicePDFProps) {
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
             {logoSrc && <Image src={logoSrc} style={{ width: 52, height: 52, marginRight: 12 }} />}
             <View>
-              <Text style={{ color: 'white', fontSize: 16, fontFamily: 'Helvetica-Bold' }}>{brand.brandName.toUpperCase()}</Text>
+              <Text style={{ color: 'white', fontSize: 16, fontFamily: 'Roboto', fontWeight: 'bold' }}>{brand.brandName.toUpperCase()}</Text>
               <Text style={{ color: brand.accentColor, fontSize: 9, marginTop: 2 }}>{brand.tagline}</Text>
             </View>
           </View>
@@ -189,15 +191,15 @@ export function NonGSTInvoicePDF({ invoice }: NonGSTInvoicePDFProps) {
               marginTop: 3, paddingTop: 5,
               flexDirection: 'row', justifyContent: 'space-between',
             }}>
-              <Text style={{ fontSize: 12, fontFamily: 'Helvetica-Bold', color: DARK }}>Grand Total</Text>
-              <Text style={{ fontSize: 12, fontFamily: 'Helvetica-Bold', color: brand.accentColor }}>{fmt(invoice.total_amount)}</Text>
+              <Text style={{ fontSize: 12, fontFamily: 'Roboto', fontWeight: 'bold', color: DARK }}>Grand Total</Text>
+              <Text style={{ fontSize: 12, fontFamily: 'Roboto', fontWeight: 'bold', color: brand.accentColor }}>{fmt(invoice.total_amount)}</Text>
             </View>
           </View>
         </View>
 
         {/* ── SECTION 7: Amount in words ── */}
         <View style={{ paddingHorizontal: PAD, marginTop: 5 }}>
-          <Text style={{ fontSize: 9, color: '#666666', fontFamily: 'Helvetica-Oblique' }}>
+          <Text style={{ fontSize: 9, color: '#666666', fontFamily: 'Roboto', fontStyle: 'italic' }}>
             Amount in Words: {amountToWords(invoice.total_amount)}
           </Text>
         </View>
@@ -215,15 +217,15 @@ export function NonGSTInvoicePDF({ invoice }: NonGSTInvoicePDFProps) {
           <View style={s.signBox}>
             <Text style={{ fontSize: 9, color: MUTED }}>For {brand.brandName}</Text>
             <View style={{ height: 30 }} />
-            <Text style={{ fontSize: 9, fontFamily: 'Helvetica-Bold', color: DARK }}>Authorised Signatory</Text>
-            <Text style={{ fontSize: 8, color: MUTED, fontFamily: 'Helvetica-Oblique' }}>Original for Recipient</Text>
+            <Text style={{ fontSize: 9, fontFamily: 'Roboto', fontWeight: 'bold', color: DARK }}>Authorised Signatory</Text>
+            <Text style={{ fontSize: 8, color: MUTED, fontFamily: 'Roboto', fontStyle: 'italic' }}>Original for Recipient</Text>
           </View>
         </View>
 
         {/* ── SECTION 9: Notes ── */}
         {invoice.notes ? (
           <View style={{ paddingHorizontal: PAD, marginTop: 12 }}>
-            <Text style={{ fontSize: 9, fontFamily: 'Helvetica-Bold', color: MUTED, marginBottom: 3 }}>Notes</Text>
+            <Text style={{ fontSize: 9, fontFamily: 'Roboto', fontWeight: 'bold', color: MUTED, marginBottom: 3 }}>Notes</Text>
             <Text style={{ fontSize: 9, color: '#444444', lineHeight: 1.6 }}>{invoice.notes}</Text>
           </View>
         ) : null}
@@ -234,7 +236,7 @@ export function NonGSTInvoicePDF({ invoice }: NonGSTInvoicePDFProps) {
           backgroundColor: '#fff7ed', borderWidth: 1, borderColor: '#fed7aa', borderStyle: 'solid',
           paddingHorizontal: 12, paddingVertical: 8,
         }}>
-          <Text style={{ fontSize: 8, color: '#92400e', fontFamily: 'Helvetica-Oblique', textAlign: 'center' }}>
+          <Text style={{ fontSize: 8, color: '#92400e', fontFamily: 'Roboto', fontStyle: 'italic', textAlign: 'center' }}>
             This is not a GST tax invoice and cannot be used for input tax credit.
           </Text>
         </View>

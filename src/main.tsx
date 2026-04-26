@@ -1,5 +1,7 @@
 import { Buffer } from 'buffer'
-;(globalThis as unknown as Record<string, unknown>).Buffer = Buffer
+if (typeof (globalThis as unknown as Record<string, unknown>).Buffer === 'undefined') {
+  ;(globalThis as unknown as Record<string, unknown>).Buffer = Buffer
+}
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'

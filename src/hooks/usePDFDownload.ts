@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { pdf } from '@react-pdf/renderer'
 import type { DocumentProps } from '@react-pdf/renderer'
 import type { ReactElement } from 'react'
+import { registerFonts } from '../utils/pdfFonts'
 
 export function usePDFDownload() {
   const [loading, setLoading] = useState(false)
@@ -12,6 +13,7 @@ export function usePDFDownload() {
   ) => {
     try {
       setLoading(true)
+      registerFonts()
       const blob = await pdf(documentElement).toBlob()
       const url = URL.createObjectURL(blob)
       const link = document.createElement('a')
