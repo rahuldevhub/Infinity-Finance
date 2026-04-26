@@ -41,9 +41,9 @@ export default function ReceiptPDF({ receipt, client }: ReceiptPDFProps) {
     headerLeft: { flexDirection: 'row', alignItems: 'center' },
     logo: { width: 44, height: 44, objectFit: 'contain', marginRight: 12 },
     brandName: { color: '#ffffff', fontSize: 16, fontFamily: 'Helvetica-Bold', letterSpacing: 1 },
-    brandTag: { color: brand.accentColor, fontSize: 9, marginTop: 2, letterSpacing: 0.5 },
+    brandTag: { color: brand.accentColor, fontSize: 9, marginTop: 2, letterSpacing: 0.5, fontFamily: 'Helvetica' },
     headerRight: { alignItems: 'flex-end' },
-    contactText: { color: '#94a3b8', fontSize: 9, marginBottom: 2 },
+    contactText: { color: '#94a3b8', fontSize: 9, marginBottom: 2, fontFamily: 'Helvetica' },
 
     // STRIPE
     stripe: { backgroundColor: brand.accentColor, height: 3 },
@@ -52,7 +52,7 @@ export default function ReceiptPDF({ receipt, client }: ReceiptPDFProps) {
     titleBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 32, borderBottomWidth: 0.5, borderBottomColor: '#f0f0f0', borderBottomStyle: 'solid' },
     docTitle: { fontSize: 14, fontFamily: 'Helvetica-Bold', color: brand.headerBg, letterSpacing: 2 },
     docMeta: { alignItems: 'flex-end' },
-    docMetaText: { fontSize: 9, color: '#888888', marginBottom: 1 },
+    docMetaText: { fontSize: 9, color: '#888888', marginBottom: 1, fontFamily: 'Helvetica' },
 
     // BODY
     body: { paddingHorizontal: 32, paddingTop: 20, paddingBottom: 16 },
@@ -76,7 +76,7 @@ export default function ReceiptPDF({ receipt, client }: ReceiptPDFProps) {
     // NOTES
     notesSection: { marginTop: 10, borderTopWidth: 0.5, borderTopColor: '#f0f0f0', borderTopStyle: 'solid', paddingTop: 10 },
     notesLabel: { fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#888888', letterSpacing: 1, marginBottom: 5 },
-    notesCustom: { fontSize: 10, color: '#444444', marginBottom: 6 },
+    notesCustom: { fontSize: 10, color: '#444444', marginBottom: 6, fontFamily: 'Helvetica' },
     notesStd: { fontSize: 9, color: '#aaaaaa', fontFamily: 'Helvetica-Oblique', lineHeight: 1.7 },
 
     // THANK YOU BANNER
@@ -85,7 +85,7 @@ export default function ReceiptPDF({ receipt, client }: ReceiptPDFProps) {
 
     // DARK FOOTER
     footer: { backgroundColor: brand.headerBg, flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8, paddingHorizontal: 32 },
-    footerText: { fontSize: 8, color: '#64748b' },
+    footerText: { fontSize: 8, color: '#64748b', fontFamily: 'Helvetica' },
   })
 
   return (

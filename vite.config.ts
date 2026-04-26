@@ -4,8 +4,16 @@ import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig({
+  define: {
+    global: 'globalThis',
+  },
   optimizeDeps: {
     include: ['@react-pdf/renderer'],
+  },
+  resolve: {
+    alias: {
+      buffer: 'buffer',
+    },
   },
   plugins: [
     react(),

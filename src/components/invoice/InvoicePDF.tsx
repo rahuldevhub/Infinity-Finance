@@ -50,19 +50,19 @@ export function InvoicePDF({ invoice }: InvoicePDFProps) {
   const clientContacts = [invoice.client?.email, invoice.client?.phone].filter(Boolean).join(' · ');
 
   const TH = { fontSize: 8, fontFamily: 'Helvetica-Bold', color: 'white' } as const;
-  const TD = { fontSize: 9, color: '#2d2d2d' } as const;
+  const TD = { fontSize: 9, color: '#2d2d2d', fontFamily: 'Helvetica' } as const;
   const BILL_BOX = {
     flex: 1, borderWidth: 0.5, borderColor: BDR, borderStyle: 'solid', borderRadius: 6,
     paddingVertical: 10, paddingHorizontal: 12,
   } as const;
   const BILL_LABEL = { fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#888888', letterSpacing: 1.5, marginBottom: 5 } as const;
   const BILL_NAME  = { fontSize: 12, fontFamily: 'Helvetica-Bold', color: brand.headerBg } as const;
-  const BILL_ADDR  = { fontSize: 9, color: '#444444', marginTop: 2 } as const;
+  const BILL_ADDR  = { fontSize: 9, color: '#444444', marginTop: 2, fontFamily: 'Helvetica' } as const;
   const BILL_GSTIN = { fontSize: 9, fontFamily: 'Helvetica-Bold', color: brand.headerBg, marginTop: 3 } as const;
-  const BILL_CONTACT = { fontSize: 9, color: '#666666', marginTop: 2 } as const;
+  const BILL_CONTACT = { fontSize: 9, color: '#666666', marginTop: 2, fontFamily: 'Helvetica' } as const;
   const SUM_ROW   = { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 3, paddingHorizontal: 8 } as const;
-  const SUM_LABEL = { fontSize: 10, color: '#444444' } as const;
-  const SUM_VALUE = { fontSize: 10, color: '#2d2d2d' } as const;
+  const SUM_LABEL = { fontSize: 10, color: '#444444', fontFamily: 'Helvetica' } as const;
+  const SUM_VALUE = { fontSize: 10, color: '#2d2d2d', fontFamily: 'Helvetica' } as const;
 
   return (
     <Document>
@@ -80,20 +80,20 @@ export function InvoicePDF({ invoice }: InvoicePDFProps) {
               {isGst ? (
                 <>
                   <Text style={{ color: 'white', fontSize: 16, fontFamily: 'Helvetica-Bold', letterSpacing: 1 }}>{BUSINESS.legalName}</Text>
-                  <Text style={{ color: brand.accentColor, fontSize: 9, letterSpacing: 0.5, marginTop: 3 }}>Unit of {brand.brandName}</Text>
+                  <Text style={{ color: brand.accentColor, fontSize: 9, letterSpacing: 0.5, marginTop: 3, fontFamily: 'Helvetica' }}>Unit of {brand.brandName}</Text>
                 </>
               ) : (
                 <>
                   <Text style={{ color: 'white', fontSize: 16, fontFamily: 'Helvetica-Bold', letterSpacing: 1 }}>{brand.brandName}</Text>
-                  <Text style={{ color: brand.accentColor, fontSize: 9, letterSpacing: 0.5, marginTop: 3 }}>{brand.tagline}</Text>
+                  <Text style={{ color: brand.accentColor, fontSize: 9, letterSpacing: 0.5, marginTop: 3, fontFamily: 'Helvetica' }}>{brand.tagline}</Text>
                 </>
               )}
             </View>
           </View>
           <View style={{ alignItems: 'flex-end' }}>
-            <Text style={{ color: '#94a3b8', fontSize: 9, marginBottom: 2 }}>{brand.email}</Text>
-            <Text style={{ color: '#94a3b8', fontSize: 9, marginBottom: 2 }}>{brand.website}</Text>
-            <Text style={{ color: '#94a3b8', fontSize: 9 }}>{brand.phone}</Text>
+            <Text style={{ color: '#94a3b8', fontSize: 9, marginBottom: 2, fontFamily: 'Helvetica' }}>{brand.email}</Text>
+            <Text style={{ color: '#94a3b8', fontSize: 9, marginBottom: 2, fontFamily: 'Helvetica' }}>{brand.website}</Text>
+            <Text style={{ color: '#94a3b8', fontSize: 9, fontFamily: 'Helvetica' }}>{brand.phone}</Text>
           </View>
         </View>
 
@@ -110,9 +110,9 @@ export function InvoicePDF({ invoice }: InvoicePDFProps) {
             {isGst ? 'TAX INVOICE' : 'RECEIPT / INVOICE'}
           </Text>
           <View style={{ alignItems: 'flex-end' }}>
-            <Text style={{ fontSize: 9, color: '#888888', marginBottom: 1 }}>Invoice No: {invoice.invoice_number}</Text>
-            <Text style={{ fontSize: 9, color: '#888888', marginBottom: 1 }}>Date: {dmy(invoice.invoice_date)}</Text>
-            {invoice.due_date ? <Text style={{ fontSize: 9, color: '#888888' }}>Due Date: {dmy(invoice.due_date)}</Text> : null}
+            <Text style={{ fontSize: 9, color: '#888888', marginBottom: 1, fontFamily: 'Helvetica' }}>Invoice No: {invoice.invoice_number}</Text>
+            <Text style={{ fontSize: 9, color: '#888888', marginBottom: 1, fontFamily: 'Helvetica' }}>Date: {dmy(invoice.invoice_date)}</Text>
+            {invoice.due_date ? <Text style={{ fontSize: 9, color: '#888888', fontFamily: 'Helvetica' }}>Due Date: {dmy(invoice.due_date)}</Text> : null}
           </View>
         </View>
 
@@ -123,7 +123,7 @@ export function InvoicePDF({ invoice }: InvoicePDFProps) {
             {isGst ? (
               <>
                 <Text style={BILL_NAME}>{BUSINESS.legalName}</Text>
-                <Text style={{ fontSize: 9, color: brand.accentColor, marginTop: 2 }}>(Unit of {brand.brandName})</Text>
+                <Text style={{ fontSize: 9, color: brand.accentColor, marginTop: 2, fontFamily: 'Helvetica' }}>(Unit of {brand.brandName})</Text>
               </>
             ) : (
               <Text style={BILL_NAME}>{brand.brandName}</Text>
@@ -150,8 +150,8 @@ export function InvoicePDF({ invoice }: InvoicePDFProps) {
             backgroundColor: '#f8f8f8', borderWidth: 0.5, borderColor: BDR, borderStyle: 'solid', borderRadius: 4,
             paddingVertical: 6, paddingHorizontal: 12, flexDirection: 'row',
           }}>
-            <Text style={{ fontSize: 9, color: '#444444', marginRight: 24 }}>Place of Supply: {invoice.place_of_supply}</Text>
-            <Text style={{ fontSize: 9, color: '#444444' }}>
+            <Text style={{ fontSize: 9, color: '#444444', marginRight: 24, fontFamily: 'Helvetica' }}>Place of Supply: {invoice.place_of_supply}</Text>
+            <Text style={{ fontSize: 9, color: '#444444', fontFamily: 'Helvetica' }}>
               Tax Type: {invoice.is_igst ? 'IGST (Inter-State)' : 'CGST + SGST (Intra-State)'}
             </Text>
           </View>
@@ -283,10 +283,10 @@ export function InvoicePDF({ invoice }: InvoicePDFProps) {
             <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#1d4ed8', letterSpacing: 1.5, marginBottom: 6 }}>
               PAYMENT DETAILS
             </Text>
-            <Text style={{ fontSize: 9, color: '#333333', lineHeight: 1.8 }}>Bank: {BUSINESS.bank.name}</Text>
-            <Text style={{ fontSize: 9, color: '#333333', lineHeight: 1.8 }}>Account Name: {BUSINESS.bank.accountName}</Text>
+            <Text style={{ fontSize: 9, color: '#333333', lineHeight: 1.8, fontFamily: 'Helvetica' }}>Bank: {BUSINESS.bank.name}</Text>
+            <Text style={{ fontSize: 9, color: '#333333', lineHeight: 1.8, fontFamily: 'Helvetica' }}>Account Name: {BUSINESS.bank.accountName}</Text>
             <Text style={{ fontSize: 9, fontFamily: 'Helvetica-Bold', color: '#333333', lineHeight: 1.8 }}>Account No: {BUSINESS.bank.accountNumber}</Text>
-            <Text style={{ fontSize: 9, color: '#333333', lineHeight: 1.8 }}>IFSC: {BUSINESS.bank.ifsc}</Text>
+            <Text style={{ fontSize: 9, color: '#333333', lineHeight: 1.8, fontFamily: 'Helvetica' }}>IFSC: {BUSINESS.bank.ifsc}</Text>
             <Text style={{ fontSize: 9, fontFamily: 'Helvetica-Bold', color: '#333333', lineHeight: 1.8 }}>UPI: {BUSINESS.bank.upi}</Text>
           </View>
         )}
@@ -299,7 +299,7 @@ export function InvoicePDF({ invoice }: InvoicePDFProps) {
         }}>
           <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#888888', letterSpacing: 1, marginBottom: 5 }}>NOTES</Text>
           {invoice.notes ? (
-            <Text style={{ fontSize: 10, color: '#444444', marginBottom: 6 }}>{invoice.notes}</Text>
+            <Text style={{ fontSize: 10, color: '#444444', marginBottom: 6, fontFamily: 'Helvetica' }}>{invoice.notes}</Text>
           ) : null}
           <Text style={{ fontSize: 9, color: '#aaaaaa', fontFamily: 'Helvetica-Oblique', lineHeight: 1.7 }}>
             This is a computer-generated invoice and does not require a physical signature.
@@ -328,9 +328,9 @@ export function InvoicePDF({ invoice }: InvoicePDFProps) {
           backgroundColor: brand.headerBg, paddingVertical: 8, paddingHorizontal: 32,
           flexDirection: 'row', justifyContent: 'space-between',
         }} fixed>
-          <Text style={{ fontSize: 8, color: '#64748b' }}>{brand.website}</Text>
-          <Text style={{ fontSize: 8, color: '#64748b' }}>{brand.email}</Text>
-          <Text style={{ fontSize: 8, color: '#64748b' }}>{brand.phone}</Text>
+          <Text style={{ fontSize: 8, color: '#64748b', fontFamily: 'Helvetica' }}>{brand.website}</Text>
+          <Text style={{ fontSize: 8, color: '#64748b', fontFamily: 'Helvetica' }}>{brand.email}</Text>
+          <Text style={{ fontSize: 8, color: '#64748b', fontFamily: 'Helvetica' }}>{brand.phone}</Text>
         </View>
 
       </Page>
