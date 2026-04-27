@@ -2,8 +2,8 @@ import { Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/render
 import type { Quotation } from '../../hooks/useQuotations';
 import type { BusinessSettings } from '../../types';
 import { getLogo } from '../../utils/logos';
-import { registerFonts } from '../../utils/pdfFonts';
-registerFonts();
+import { registerPDFFonts } from '../../utils/pdfFonts';
+registerPDFFonts();
 
 // ─── Public client interface (subset — kept compatible with callers) ──────────
 export interface QuotationPDFClient {
@@ -120,7 +120,7 @@ const s = StyleSheet.create({
     paddingTop: 22,
     paddingBottom: 22,
   },
-  brandName:    { color: 'white', fontSize: 18, fontFamily: 'Roboto', fontWeight: 'bold', letterSpacing: 1, marginBottom: 4 },
+  brandName:    { color: 'white', fontSize: 18, fontFamily: 'Roboto', fontWeight: 700, letterSpacing: 1, marginBottom: 4 },
   brandTagline: { color: '#aaaaaa', fontSize: 7.5, letterSpacing: 0.5, fontFamily: 'Roboto' },
   headerRight:  { alignItems: 'flex-end' },
   headerContact: { color: '#cccccc', fontSize: 8, marginBottom: 2, textAlign: 'right', fontFamily: 'Roboto' },
@@ -134,7 +134,7 @@ const s = StyleSheet.create({
     paddingHorizontal: PAD,
     paddingVertical: 12,
   },
-  brandNameSm: { color: 'white', fontSize: 13, fontFamily: 'Roboto', fontWeight: 'bold', letterSpacing: 1 },
+  brandNameSm: { color: 'white', fontSize: 13, fontFamily: 'Roboto', fontWeight: 700, letterSpacing: 1 },
 
   // ── Red stripe ──
   redStripe: { backgroundColor: RED, height: 4 },
@@ -151,12 +151,12 @@ const s = StyleSheet.create({
     borderBottomColor: BDR,
     borderBottomStyle: 'solid',
   },
-  titleText: { color: NAVY, fontSize: 14, fontFamily: 'Roboto', fontWeight: 'bold', letterSpacing: 2 },
+  titleText: { color: NAVY, fontSize: 14, fontFamily: 'Roboto', fontWeight: 700, letterSpacing: 2 },
   titleMeta: { color: MUTED, fontSize: 8.5, textAlign: 'right', fontFamily: 'Roboto' },
 
   // ── Welcome line ──
   welcome: { paddingHorizontal: PAD, paddingTop: 14, paddingBottom: 2 },
-  welcomeText: { fontSize: 10.5, fontFamily: 'Roboto', fontStyle: 'italic', color: NAVY, lineHeight: 1.5 },
+  welcomeText: { fontSize: 10.5, fontFamily: 'Roboto', color: NAVY, lineHeight: 1.5 },
 
   // ── Author details table ──
   tableWrap: {
@@ -182,7 +182,7 @@ const s = StyleSheet.create({
     borderRightColor: BDR,
     borderRightStyle: 'solid',
   },
-  tableLabelText: { fontSize: 8.5, fontFamily: 'Roboto', fontWeight: 'bold', color: '#555555' },
+  tableLabelText: { fontSize: 8.5, fontFamily: 'Roboto', fontWeight: 700, color: '#555555' },
   tableValue: { flex: 1, paddingVertical: 7, paddingHorizontal: 10 },
   tableValueText: { fontSize: 8.5, color: DARK, fontFamily: 'Roboto' },
 
@@ -199,7 +199,7 @@ const s = StyleSheet.create({
     paddingVertical: 7,
     paddingHorizontal: 10,
   },
-  investHeaderText: { color: 'white', fontSize: 8, fontFamily: 'Roboto', fontWeight: 'bold', letterSpacing: 0.5 },
+  investHeaderText: { color: 'white', fontSize: 8, fontFamily: 'Roboto', fontWeight: 700, letterSpacing: 0.5 },
   investRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -230,8 +230,8 @@ const s = StyleSheet.create({
     paddingVertical: 8,
     backgroundColor: '#fff5f5',
   },
-  investTotalLabel: { fontSize: 10, fontFamily: 'Roboto', fontWeight: 'bold', color: NAVY },
-  investTotalValue: { fontSize: 10, fontFamily: 'Roboto', fontWeight: 'bold', color: RED },
+  investTotalLabel: { fontSize: 10, fontFamily: 'Roboto', fontWeight: 700, color: NAVY },
+  investTotalValue: { fontSize: 10, fontFamily: 'Roboto', fontWeight: 700, color: RED },
 
   // ── Payment schedule table ──
   schedWrap: {
@@ -249,7 +249,7 @@ const s = StyleSheet.create({
     borderBottomStyle: 'solid',
   },
   schedThCell: { paddingVertical: 6, paddingHorizontal: 10 },
-  schedThText: { fontSize: 8, fontFamily: 'Roboto', fontWeight: 'bold', color: '#555555' },
+  schedThText: { fontSize: 8, fontFamily: 'Roboto', fontWeight: 700, color: '#555555' },
   schedRow: {
     flexDirection: 'row',
     borderBottomWidth: 1,
@@ -270,11 +270,11 @@ const s = StyleSheet.create({
     paddingVertical: 12,
     alignItems: 'center',
   },
-  navyBannerText: { color: 'white', fontSize: 11, fontFamily: 'Roboto', fontWeight: 'bold', textAlign: 'center' },
+  navyBannerText: { color: 'white', fontSize: 11, fontFamily: 'Roboto', fontWeight: 700, textAlign: 'center' },
 
   // ── Publishing process (4 steps) ──
   processWrap: { marginHorizontal: PAD, marginTop: 14 },
-  processTitle: { fontSize: 9, fontFamily: 'Roboto', fontWeight: 'bold', color: NAVY, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 },
+  processTitle: { fontSize: 9, fontFamily: 'Roboto', fontWeight: 700, color: NAVY, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 },
   processStep: { flexDirection: 'row', marginBottom: 6, alignItems: 'flex-start' },
   stepBubble: {
     width: 16,
@@ -287,17 +287,17 @@ const s = StyleSheet.create({
     marginTop: 1,
     flexShrink: 0,
   },
-  stepNum: { color: 'white', fontSize: 7, fontFamily: 'Roboto', fontWeight: 'bold' },
+  stepNum: { color: 'white', fontSize: 7, fontFamily: 'Roboto', fontWeight: 700 },
   stepText: { flex: 1, fontSize: 8.5, color: DARK, lineHeight: 1.5, fontFamily: 'Roboto' },
 
   // ── Page 2: section heading with red accent ──
   sectionWrap: { paddingHorizontal: PAD, marginTop: 16 },
   sectionRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
   sectionAccent: { width: 4, height: 13, backgroundColor: RED, marginRight: 8, borderRadius: 2 },
-  sectionTitle: { fontSize: 9, fontFamily: 'Roboto', fontWeight: 'bold', color: NAVY, letterSpacing: 0.5, textTransform: 'uppercase' },
+  sectionTitle: { fontSize: 9, fontFamily: 'Roboto', fontWeight: 700, color: NAVY, letterSpacing: 0.5, textTransform: 'uppercase' },
 
   // ── Services by category ──
-  categoryLabel: { fontSize: 7.5, fontFamily: 'Roboto', fontWeight: 'bold', color: '#888888', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 3, marginTop: 8 },
+  categoryLabel: { fontSize: 7.5, fontFamily: 'Roboto', fontWeight: 700, color: '#888888', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 3, marginTop: 8 },
   serviceItem: { flexDirection: 'row', paddingVertical: 2.5 },
   serviceBullet: { fontSize: 8.5, color: MUTED, width: 14, fontFamily: 'Roboto' },
   serviceText: { flex: 1, fontSize: 8.5, color: DARK, lineHeight: 1.4, fontFamily: 'Roboto' },
@@ -309,11 +309,11 @@ const s = StyleSheet.create({
 
   // ── Closing paragraph ──
   closingWrap: { paddingHorizontal: PAD, marginTop: 12 },
-  closingText: { fontSize: 9, color: '#555555', fontFamily: 'Roboto', fontStyle: 'italic', lineHeight: 1.6 },
+  closingText: { fontSize: 9, color: '#555555', fontFamily: 'Roboto', lineHeight: 1.6 },
 
   // ── Terms ──
   termsWrap: { paddingHorizontal: PAD, marginTop: 14 },
-  termsTitle: { fontSize: 9, fontFamily: 'Roboto', fontWeight: 'bold', color: NAVY, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 },
+  termsTitle: { fontSize: 9, fontFamily: 'Roboto', fontWeight: 700, color: NAVY, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 },
   termsRow: { flexDirection: 'row', marginBottom: 4 },
   termsBullet: { fontSize: 8.5, color: MUTED, width: 12, fontFamily: 'Roboto' },
   termsText: { flex: 1, fontSize: 8.5, color: '#555555', lineHeight: 1.5, fontFamily: 'Roboto' },
@@ -332,13 +332,13 @@ const s = StyleSheet.create({
     paddingHorizontal: PAD,
   },
   footerLeft:   { fontSize: 7.5, color: '#aaaaaa', flex: 1, fontFamily: 'Roboto' },
-  footerCenter: { fontSize: 7.5, color: '#cccccc', fontFamily: 'Roboto', fontStyle: 'italic', flex: 2, textAlign: 'center' },
+  footerCenter: { fontSize: 7.5, color: '#cccccc', fontFamily: 'Roboto', flex: 2, textAlign: 'center' },
   footerRight:  { fontSize: 7.5, color: '#aaaaaa', flex: 1, textAlign: 'right', fontFamily: 'Roboto' },
 
   // ── Legacy (fallback) layout ──
   legacyPage: { fontFamily: 'Roboto', color: DARK, fontSize: 10, backgroundColor: 'white', paddingBottom: 44 },
   legacySection: { paddingHorizontal: PAD, marginTop: 14 },
-  legacySectionTitle: { fontSize: 9, fontFamily: 'Roboto', fontWeight: 'bold', color: NAVY, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 },
+  legacySectionTitle: { fontSize: 9, fontFamily: 'Roboto', fontWeight: 700, color: NAVY, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 },
   legacyItemRow: { flexDirection: 'row', paddingVertical: 4, borderBottomWidth: 1, borderBottomColor: '#f0f0f0', borderBottomStyle: 'solid' },
   legacyBullet: { fontSize: 9, color: RED, width: 14, fontFamily: 'Roboto' },
   legacyItemDesc: { flex: 1, fontSize: 9, color: DARK, lineHeight: 1.4, fontFamily: 'Roboto' },

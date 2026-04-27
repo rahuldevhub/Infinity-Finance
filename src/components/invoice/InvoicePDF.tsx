@@ -1,7 +1,7 @@
 import { Document, Page, Text, View, Image } from '@react-pdf/renderer';
 import type { Invoice, BusinessSettings } from '../../types';
-import { registerFonts } from '../../utils/pdfFonts';
-registerFonts();
+import { registerPDFFonts } from '../../utils/pdfFonts';
+registerPDFFonts();
 import { getLogo, PLACEHOLDER_LOGOS } from '../../utils/logos';
 import { BUSINESS, getBrandDetails } from '../../constants/businessDetails';
 import { amountToWords } from '../../utils/amountToWords';
@@ -51,16 +51,16 @@ export function InvoicePDF({ invoice }: InvoicePDFProps) {
 
   const clientContacts = [invoice.client?.email, invoice.client?.phone].filter(Boolean).join(' · ');
 
-  const TH = { fontSize: 8, fontFamily: 'Roboto', fontWeight: 'bold', color: 'white' } as const;
+  const TH = { fontSize: 8, fontFamily: 'Roboto', fontWeight: 700, color: 'white' } as const;
   const TD = { fontSize: 9, color: '#2d2d2d', fontFamily: 'Roboto' } as const;
   const BILL_BOX = {
     flex: 1, borderWidth: 0.5, borderColor: BDR, borderStyle: 'solid', borderRadius: 6,
     paddingVertical: 10, paddingHorizontal: 12,
   } as const;
-  const BILL_LABEL = { fontSize: 8, fontFamily: 'Roboto', fontWeight: 'bold', color: '#888888', letterSpacing: 1.5, marginBottom: 5 } as const;
-  const BILL_NAME  = { fontSize: 12, fontFamily: 'Roboto', fontWeight: 'bold', color: brand.headerBg } as const;
+  const BILL_LABEL = { fontSize: 8, fontFamily: 'Roboto', fontWeight: 700, color: '#888888', letterSpacing: 1.5, marginBottom: 5 } as const;
+  const BILL_NAME  = { fontSize: 12, fontFamily: 'Roboto', fontWeight: 700, color: brand.headerBg } as const;
   const BILL_ADDR  = { fontSize: 9, color: '#444444', marginTop: 2, fontFamily: 'Roboto' } as const;
-  const BILL_GSTIN = { fontSize: 9, fontFamily: 'Roboto', fontWeight: 'bold', color: brand.headerBg, marginTop: 3 } as const;
+  const BILL_GSTIN = { fontSize: 9, fontFamily: 'Roboto', fontWeight: 700, color: brand.headerBg, marginTop: 3 } as const;
   const BILL_CONTACT = { fontSize: 9, color: '#666666', marginTop: 2, fontFamily: 'Roboto' } as const;
   const SUM_ROW   = { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 3, paddingHorizontal: 8 } as const;
   const SUM_LABEL = { fontSize: 10, color: '#444444', fontFamily: 'Roboto' } as const;
@@ -81,12 +81,12 @@ export function InvoicePDF({ invoice }: InvoicePDFProps) {
             <View>
               {isGst ? (
                 <>
-                  <Text style={{ color: 'white', fontSize: 16, fontFamily: 'Roboto', fontWeight: 'bold', letterSpacing: 1 }}>{BUSINESS.legalName}</Text>
+                  <Text style={{ color: 'white', fontSize: 16, fontFamily: 'Roboto', fontWeight: 700, letterSpacing: 1 }}>{BUSINESS.legalName}</Text>
                   <Text style={{ color: brand.accentColor, fontSize: 9, letterSpacing: 0.5, marginTop: 3, fontFamily: 'Roboto' }}>Unit of {brand.brandName}</Text>
                 </>
               ) : (
                 <>
-                  <Text style={{ color: 'white', fontSize: 16, fontFamily: 'Roboto', fontWeight: 'bold', letterSpacing: 1 }}>{brand.brandName}</Text>
+                  <Text style={{ color: 'white', fontSize: 16, fontFamily: 'Roboto', fontWeight: 700, letterSpacing: 1 }}>{brand.brandName}</Text>
                   <Text style={{ color: brand.accentColor, fontSize: 9, letterSpacing: 0.5, marginTop: 3, fontFamily: 'Roboto' }}>{brand.tagline}</Text>
                 </>
               )}
@@ -108,7 +108,7 @@ export function InvoicePDF({ invoice }: InvoicePDFProps) {
           paddingVertical: 12, paddingHorizontal: 32,
           borderBottomWidth: 0.5, borderBottomColor: '#f0f0f0', borderBottomStyle: 'solid',
         }}>
-          <Text style={{ color: brand.headerBg, fontSize: 14, fontFamily: 'Roboto', fontWeight: 'bold', letterSpacing: 2 }}>
+          <Text style={{ color: brand.headerBg, fontSize: 14, fontFamily: 'Roboto', fontWeight: 700, letterSpacing: 2 }}>
             {isGst ? 'TAX INVOICE' : 'RECEIPT / INVOICE'}
           </Text>
           <View style={{ alignItems: 'flex-end' }}>
@@ -262,15 +262,15 @@ export function InvoicePDF({ invoice }: InvoicePDFProps) {
               marginVertical: 4, marginHorizontal: 8,
             }} />
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 8 }}>
-              <Text style={{ fontSize: 12, fontFamily: 'Roboto', fontWeight: 'bold', color: brand.headerBg }}>Grand Total</Text>
-              <Text style={{ fontSize: 12, fontFamily: 'Roboto', fontWeight: 'bold', color: brand.accentColor }}>{fmt(invoice.total_amount)}</Text>
+              <Text style={{ fontSize: 12, fontFamily: 'Roboto', fontWeight: 700, color: brand.headerBg }}>Grand Total</Text>
+              <Text style={{ fontSize: 12, fontFamily: 'Roboto', fontWeight: 700, color: brand.accentColor }}>{fmt(invoice.total_amount)}</Text>
             </View>
           </View>
         </View>
 
         {/* ── Amount in words ── */}
         <View style={{ paddingHorizontal: 40, marginTop: 6 }}>
-          <Text style={{ fontSize: 9, color: '#666666', fontFamily: 'Roboto', fontStyle: 'italic' }}>
+          <Text style={{ fontSize: 9, color: '#666666', fontFamily: 'Roboto' }}>
             Amount in Words: {amountToWords(invoice.total_amount)} Only
           </Text>
         </View>
@@ -282,14 +282,14 @@ export function InvoicePDF({ invoice }: InvoicePDFProps) {
             backgroundColor: '#eff6ff', borderWidth: 0.5, borderColor: '#bfdbfe', borderStyle: 'solid', borderRadius: 6,
             paddingVertical: 10, paddingHorizontal: 12,
           }}>
-            <Text style={{ fontSize: 8, fontFamily: 'Roboto', fontWeight: 'bold', color: '#1d4ed8', letterSpacing: 1.5, marginBottom: 6 }}>
+            <Text style={{ fontSize: 8, fontFamily: 'Roboto', fontWeight: 700, color: '#1d4ed8', letterSpacing: 1.5, marginBottom: 6 }}>
               PAYMENT DETAILS
             </Text>
             <Text style={{ fontSize: 9, color: '#333333', lineHeight: 1.8, fontFamily: 'Roboto' }}>Bank: {BUSINESS.bank.name}</Text>
             <Text style={{ fontSize: 9, color: '#333333', lineHeight: 1.8, fontFamily: 'Roboto' }}>Account Name: {BUSINESS.bank.accountName}</Text>
-            <Text style={{ fontSize: 9, fontFamily: 'Roboto', fontWeight: 'bold', color: '#333333', lineHeight: 1.8 }}>Account No: {BUSINESS.bank.accountNumber}</Text>
+            <Text style={{ fontSize: 9, fontFamily: 'Roboto', fontWeight: 700, color: '#333333', lineHeight: 1.8 }}>Account No: {BUSINESS.bank.accountNumber}</Text>
             <Text style={{ fontSize: 9, color: '#333333', lineHeight: 1.8, fontFamily: 'Roboto' }}>IFSC: {BUSINESS.bank.ifsc}</Text>
-            <Text style={{ fontSize: 9, fontFamily: 'Roboto', fontWeight: 'bold', color: '#333333', lineHeight: 1.8 }}>UPI: {BUSINESS.bank.upi}</Text>
+            <Text style={{ fontSize: 9, fontFamily: 'Roboto', fontWeight: 700, color: '#333333', lineHeight: 1.8 }}>UPI: {BUSINESS.bank.upi}</Text>
           </View>
         )}
 
@@ -299,17 +299,17 @@ export function InvoicePDF({ invoice }: InvoicePDFProps) {
           borderWidth: 0.5, borderColor: BDR, borderStyle: 'solid', borderRadius: 6,
           paddingVertical: 10, paddingHorizontal: 12,
         }}>
-          <Text style={{ fontSize: 8, fontFamily: 'Roboto', fontWeight: 'bold', color: '#888888', letterSpacing: 1, marginBottom: 5 }}>NOTES</Text>
+          <Text style={{ fontSize: 8, fontFamily: 'Roboto', fontWeight: 700, color: '#888888', letterSpacing: 1, marginBottom: 5 }}>NOTES</Text>
           {invoice.notes ? (
             <Text style={{ fontSize: 10, color: '#444444', marginBottom: 6, fontFamily: 'Roboto' }}>{invoice.notes}</Text>
           ) : null}
-          <Text style={{ fontSize: 9, color: '#aaaaaa', fontFamily: 'Roboto', fontStyle: 'italic', lineHeight: 1.7 }}>
+          <Text style={{ fontSize: 9, color: '#aaaaaa', fontFamily: 'Roboto', lineHeight: 1.7 }}>
             This is a computer-generated invoice and does not require a physical signature.
           </Text>
-          <Text style={{ fontSize: 9, color: '#aaaaaa', fontFamily: 'Roboto', fontStyle: 'italic', lineHeight: 1.7 }}>
+          <Text style={{ fontSize: 9, color: '#aaaaaa', fontFamily: 'Roboto', lineHeight: 1.7 }}>
             Subject to jurisdiction of Namakkal courts.
           </Text>
-          <Text style={{ fontSize: 9, color: '#aaaaaa', fontFamily: 'Roboto', fontStyle: 'italic', lineHeight: 1.7 }}>
+          <Text style={{ fontSize: 9, color: '#aaaaaa', fontFamily: 'Roboto', lineHeight: 1.7 }}>
             For any queries: {brand.email}
           </Text>
         </View>
@@ -319,7 +319,7 @@ export function InvoicePDF({ invoice }: InvoicePDFProps) {
           position: 'absolute', bottom: 30, left: 0, right: 0,
           backgroundColor: brand.accentColor, paddingVertical: 10, alignItems: 'center',
         }} fixed>
-          <Text style={{ color: 'white', fontSize: 11, fontFamily: 'Roboto', fontWeight: 'bold', letterSpacing: 1.5 }}>
+          <Text style={{ color: 'white', fontSize: 11, fontFamily: 'Roboto', fontWeight: 700, letterSpacing: 1.5 }}>
             THANK YOU FOR YOUR BUSINESS!
           </Text>
         </View>
