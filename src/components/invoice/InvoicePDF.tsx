@@ -181,7 +181,7 @@ export function InvoicePDF({ invoice }: InvoicePDFProps) {
                 <Text style={[ps.th, { width: C.total, textAlign: 'right', paddingRight: 8 }]}>Total</Text>
               </View>
               {/* GST item rows */}
-              {invoice.items.map((item, i) => (
+              {(invoice.items || []).map((item, i) => (
                 <View key={i} style={{
                   flexDirection: 'row', paddingVertical: 6, paddingLeft: 8, paddingRight: 8,
                   borderBottomWidth: 0.5, borderBottomColor: '#eeeeee', borderBottomStyle: 'solid',
@@ -214,7 +214,7 @@ export function InvoicePDF({ invoice }: InvoicePDFProps) {
                 <Text style={[ps.th, { width: CS.amount, textAlign: 'right', paddingRight: 8 }]}>Amount</Text>
               </View>
               {/* Non-GST item rows */}
-              {invoice.items.map((item, i) => (
+              {(invoice.items || []).map((item, i) => (
                 <View key={i} style={{
                   flexDirection: 'row', paddingVertical: 6, paddingLeft: 8, paddingRight: 8,
                   borderBottomWidth: 0.5, borderBottomColor: '#eeeeee', borderBottomStyle: 'solid',

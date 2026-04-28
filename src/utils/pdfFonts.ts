@@ -7,16 +7,27 @@ export function registerPDFFonts() {
   if (fontsRegistered) return
   fontsRegistered = true
 
-  const fonts = [
-    { src: ROBOTO_REGULAR, fontWeight: 400 },
-    { src: ROBOTO_BOLD, fontWeight: 700 },
+  const regular = { src: ROBOTO_REGULAR, fontWeight: 400 }
+  const bold = { src: ROBOTO_BOLD, fontWeight: 700 }
+  const fonts = [regular, bold]
+
+  // Register ALL possible font family names — any unregistered name causes 'unitsPerEm' crash
+  const families = [
+    'Roboto',
+    'sans-serif',
+    'Helvetica',
+    'Helvetica-Bold',
+    'Helvetica-Oblique',
+    'Helvetica-BoldOblique',
+    'Times-Roman',
+    'Times-Bold',
+    'Courier',
+    'Arial',
   ]
 
-  // Register under ALL possible names used in PDF components
-  Font.register({ family: 'Roboto', fonts })
-  Font.register({ family: 'sans-serif', fonts })
-  Font.register({ family: 'Helvetica', fonts })
-  Font.register({ family: 'Helvetica-Bold', fonts: [{ src: ROBOTO_BOLD, fontWeight: 700 }] })
+  families.forEach(family => {
+    Font.register({ family, fonts })
+  })
 
   Font.registerHyphenationCallback((word) => [word])
   console.log('PDF fonts registered from base64')

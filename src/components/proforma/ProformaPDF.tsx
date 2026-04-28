@@ -147,7 +147,7 @@ export function ProformaPDF({ proforma }: ProformaPDFProps) {
             <Text style={[ps.th, { width: C.amount, textAlign: 'right', paddingRight: 8 }]}>Amount</Text>
           </View>
           {/* Item rows */}
-          {proforma.items.filter(i => i.description.trim()).map((item, i) => (
+          {(proforma.items || []).filter(i => i.description.trim()).map((item, i) => (
             <View key={i} style={{
               flexDirection: 'row', paddingVertical: 6, paddingLeft: 8, paddingRight: 8,
               borderBottomWidth: 0.5, borderBottomColor: '#eeeeee', borderBottomStyle: 'solid',
