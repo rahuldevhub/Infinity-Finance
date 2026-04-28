@@ -6,24 +6,30 @@ export function registerPDFFonts() {
   if (fontsRegistered) return
   fontsRegistered = true
 
-  try {
-    Font.register({
-      family: 'Roboto',
-      fonts: [
-        {
-          src: 'https://fonts.gstatic.com/s/roboto/v30/KFOmCnqEu92Fr1Me5Q.ttf',
-          fontWeight: 400,
-        },
-        {
-          src: 'https://fonts.gstatic.com/s/roboto/v30/KFOlCnqEu92Fr1MmWUlvAw.ttf',
-          fontWeight: 700,
-        },
-      ],
-    })
+  const fonts = [
+    {
+      src: 'https://fonts.gstatic.com/s/roboto/v30/KFOmCnqEu92Fr1Me5Q.ttf',
+      fontWeight: 400,
+    },
+    {
+      src: 'https://fonts.gstatic.com/s/roboto/v30/KFOlCnqEu92Fr1MmWUlvAw.ttf',
+      fontWeight: 700,
+    },
+  ]
 
-    Font.registerHyphenationCallback((word) => [word])
-    console.log('PDF fonts registered successfully')
-  } catch (err) {
-    console.error('Font registration failed:', err)
-  }
+  // Register as 'Roboto'
+  Font.register({ family: 'Roboto', fonts })
+
+  // Register same fonts as 'sans-serif' alias — catches any missed occurrences
+  Font.register({ family: 'sans-serif', fonts })
+
+  // Register as 'Helvetica' alias too — catches old references
+  Font.register({ family: 'Helvetica', fonts })
+
+  // Register bold variants
+  Font.register({ family: 'Helvetica-Bold', fonts: [{ src: fonts[1].src, fontWeight: 700 }] })
+
+  Font.registerHyphenationCallback((word) => [word])
+
+  console.log('PDF fonts registered: Roboto, sans-serif, Helvetica aliases')
 }
