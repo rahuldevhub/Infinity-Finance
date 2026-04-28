@@ -31,86 +31,86 @@ const BDR = '#e0e0e0';
 // ── All styles at module level — zero inline fontFamily in JSX ────────────────
 const ps = StyleSheet.create({
   // Page
-  page: { fontFamily: 'Roboto', fontSize: 10, backgroundColor: 'white', paddingBottom: 72 },
+  page: { fontSize: 10, backgroundColor: 'white', paddingBottom: 72 },
 
   // Header
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 16, paddingHorizontal: 32 },
   headerLeft: { flexDirection: 'row', alignItems: 'center' },
   logo: { width: 44, height: 44, marginRight: 12 },
-  headerBrandName: { color: 'white', fontSize: 16, fontFamily: 'Roboto', fontWeight: 700, letterSpacing: 1 },
-  headerBrandSub: { fontSize: 9, letterSpacing: 0.5, marginTop: 3, fontFamily: 'Roboto' },
+  headerBrandName: { color: 'white', fontSize: 16, fontWeight: 700, letterSpacing: 1 },
+  headerBrandSub: { fontSize: 9, letterSpacing: 0.5, marginTop: 3, },
   headerRight: { alignItems: 'flex-end' },
-  headerContact: { color: '#94a3b8', fontSize: 9, marginBottom: 2, fontFamily: 'Roboto' },
-  headerContactLast: { color: '#94a3b8', fontSize: 9, fontFamily: 'Roboto' },
+  headerContact: { color: '#94a3b8', fontSize: 9, marginBottom: 2, },
+  headerContactLast: { color: '#94a3b8', fontSize: 9, },
 
   // Accent stripe
   stripe: { height: 3 },
 
   // Title bar
   titleBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 32, borderBottomWidth: 0.5, borderBottomColor: '#f0f0f0', borderBottomStyle: 'solid' },
-  titleText: { fontSize: 14, fontFamily: 'Roboto', fontWeight: 700, letterSpacing: 2 },
+  titleText: { fontSize: 14, fontWeight: 700, letterSpacing: 2 },
   titleMeta: { alignItems: 'flex-end' },
-  metaText: { fontSize: 9, color: '#888888', marginBottom: 1, fontFamily: 'Roboto' },
-  metaTextLast: { fontSize: 9, color: '#888888', fontFamily: 'Roboto' },
+  metaText: { fontSize: 9, color: '#888888', marginBottom: 1, },
+  metaTextLast: { fontSize: 9, color: '#888888', },
 
   // Bill boxes
   billedRow: { flexDirection: 'row', paddingHorizontal: 32, marginTop: 16 },
   billBox: { flex: 1, borderWidth: 0.5, borderColor: BDR, borderStyle: 'solid', borderRadius: 6, paddingVertical: 10, paddingHorizontal: 12 },
   billBoxLeft: { flex: 1, borderWidth: 0.5, borderColor: BDR, borderStyle: 'solid', borderRadius: 6, paddingVertical: 10, paddingHorizontal: 12, marginRight: 12 },
-  billLabel: { fontSize: 8, fontFamily: 'Roboto', fontWeight: 700, color: '#888888', letterSpacing: 1.5, marginBottom: 5 },
-  billName: { fontSize: 12, fontFamily: 'Roboto', fontWeight: 700 },
-  billUnit: { fontSize: 9, marginTop: 2, fontFamily: 'Roboto' },
-  billAddr: { fontSize: 9, color: '#444444', marginTop: 2, fontFamily: 'Roboto' },
-  billGstin: { fontSize: 9, fontFamily: 'Roboto', fontWeight: 700, marginTop: 3 },
-  billContact: { fontSize: 9, color: '#666666', marginTop: 2, fontFamily: 'Roboto' },
+  billLabel: { fontSize: 8, fontWeight: 700, color: '#888888', letterSpacing: 1.5, marginBottom: 5 },
+  billName: { fontSize: 12, fontWeight: 700 },
+  billUnit: { fontSize: 9, marginTop: 2, },
+  billAddr: { fontSize: 9, color: '#444444', marginTop: 2, },
+  billGstin: { fontSize: 9, fontWeight: 700, marginTop: 3 },
+  billContact: { fontSize: 9, color: '#666666', marginTop: 2, },
 
   // Supply details bar
   supplyBar: { marginHorizontal: 32, marginTop: 12, backgroundColor: '#f8f8f8', borderWidth: 0.5, borderColor: BDR, borderStyle: 'solid', borderRadius: 4, paddingVertical: 6, paddingHorizontal: 12, flexDirection: 'row' },
-  supplyText: { fontSize: 9, color: '#444444', fontFamily: 'Roboto' },
-  supplyTextFirst: { fontSize: 9, color: '#444444', marginRight: 24, fontFamily: 'Roboto' },
+  supplyText: { fontSize: 9, color: '#444444', },
+  supplyTextFirst: { fontSize: 9, color: '#444444', marginRight: 24, },
 
   // Table
   tableWrap: { marginHorizontal: 32, marginTop: 12 },
   tableHeader: { flexDirection: 'row', paddingVertical: 7, paddingLeft: 8, paddingRight: 8 },
   tableRow: { flexDirection: 'row', paddingVertical: 6, paddingLeft: 8, paddingRight: 8, borderBottomWidth: 0.5, borderBottomColor: '#eeeeee', borderBottomStyle: 'solid' },
   tableRowAlt: { flexDirection: 'row', paddingVertical: 6, paddingLeft: 8, paddingRight: 8, borderBottomWidth: 0.5, borderBottomColor: '#eeeeee', borderBottomStyle: 'solid', backgroundColor: '#fafafa' },
-  th: { fontSize: 8, fontFamily: 'Roboto', fontWeight: 700, color: 'white' },
-  td: { fontSize: 9, color: '#2d2d2d', fontFamily: 'Roboto' },
+  th: { fontSize: 8, fontWeight: 700, color: 'white' },
+  td: { fontSize: 9, color: '#2d2d2d', },
 
   // Summary
   summaryOuter: { flexDirection: 'row', justifyContent: 'flex-end', paddingHorizontal: 32, marginTop: 8 },
   summaryInner: { width: '50%' },
   sumRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 3, paddingHorizontal: 8 },
-  sumLabel: { fontSize: 10, color: '#444444', fontFamily: 'Roboto' },
-  sumValue: { fontSize: 10, color: '#2d2d2d', fontFamily: 'Roboto' },
+  sumLabel: { fontSize: 10, color: '#444444', },
+  sumValue: { fontSize: 10, color: '#2d2d2d', },
   totalDivider: { marginVertical: 4, marginHorizontal: 8, borderTopWidth: 1, borderTopStyle: 'solid' },
   totalRow: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 8 },
-  totalLabel: { fontSize: 12, fontFamily: 'Roboto', fontWeight: 700 },
-  totalValue: { fontSize: 12, fontFamily: 'Roboto', fontWeight: 700 },
+  totalLabel: { fontSize: 12, fontWeight: 700 },
+  totalValue: { fontSize: 12, fontWeight: 700 },
 
   // Amount in words
   amountWords: { paddingHorizontal: 40, marginTop: 6 },
-  amountWordsText: { fontSize: 9, color: '#666666', fontFamily: 'Roboto' },
+  amountWordsText: { fontSize: 9, color: '#666666', },
 
   // Payment details
   paymentBox: { marginHorizontal: 32, marginTop: 12, backgroundColor: '#eff6ff', borderWidth: 0.5, borderColor: '#bfdbfe', borderStyle: 'solid', borderRadius: 6, paddingVertical: 10, paddingHorizontal: 12 },
-  paymentTitle: { fontSize: 8, fontFamily: 'Roboto', fontWeight: 700, color: '#1d4ed8', letterSpacing: 1.5, marginBottom: 6 },
-  paymentRow: { fontSize: 9, color: '#333333', lineHeight: 1.8, fontFamily: 'Roboto' },
-  paymentRowBold: { fontSize: 9, fontFamily: 'Roboto', fontWeight: 700, color: '#333333', lineHeight: 1.8 },
+  paymentTitle: { fontSize: 8, fontWeight: 700, color: '#1d4ed8', letterSpacing: 1.5, marginBottom: 6 },
+  paymentRow: { fontSize: 9, color: '#333333', lineHeight: 1.8, },
+  paymentRowBold: { fontSize: 9, fontWeight: 700, color: '#333333', lineHeight: 1.8 },
 
   // Notes
   notesBox: { marginHorizontal: 32, marginTop: 12, borderWidth: 0.5, borderColor: BDR, borderStyle: 'solid', borderRadius: 6, paddingVertical: 10, paddingHorizontal: 12 },
-  notesTitle: { fontSize: 8, fontFamily: 'Roboto', fontWeight: 700, color: '#888888', letterSpacing: 1, marginBottom: 5 },
-  notesContent: { fontSize: 10, color: '#444444', marginBottom: 6, fontFamily: 'Roboto' },
-  notesStd: { fontSize: 9, color: '#aaaaaa', fontFamily: 'Roboto', lineHeight: 1.7 },
+  notesTitle: { fontSize: 8, fontWeight: 700, color: '#888888', letterSpacing: 1, marginBottom: 5 },
+  notesContent: { fontSize: 10, color: '#444444', marginBottom: 6, },
+  notesStd: { fontSize: 9, color: '#aaaaaa', lineHeight: 1.7 },
 
   // Thank you banner (fixed above footer)
   thanksBanner: { position: 'absolute', bottom: 30, left: 0, right: 0, paddingVertical: 10, alignItems: 'center' },
-  thanksBannerText: { color: 'white', fontSize: 11, fontFamily: 'Roboto', fontWeight: 700, letterSpacing: 1.5 },
+  thanksBannerText: { color: 'white', fontSize: 11, fontWeight: 700, letterSpacing: 1.5 },
 
   // Footer (fixed at bottom)
   footer: { position: 'absolute', bottom: 0, left: 0, right: 0, paddingVertical: 8, paddingHorizontal: 32, flexDirection: 'row', justifyContent: 'space-between' },
-  footerText: { fontSize: 8, color: '#64748b', fontFamily: 'Roboto' },
+  footerText: { fontSize: 8, color: '#64748b', },
 });
 
 // ── Component ─────────────────────────────────────────────────────────────────
