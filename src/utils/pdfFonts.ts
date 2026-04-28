@@ -1,4 +1,5 @@
 import { Font } from '@react-pdf/renderer'
+import { ROBOTO_REGULAR, ROBOTO_BOLD } from './fontBase64'
 
 let fontsRegistered = false
 
@@ -6,27 +7,17 @@ export function registerPDFFonts() {
   if (fontsRegistered) return
   fontsRegistered = true
 
-  // Use local font files served from /public/fonts/
-  // These are bundled with the app — no external CDN dependency
-  const regularFont = '/fonts/Roboto-Regular.ttf'
-  const boldFont = '/fonts/Roboto-Bold.ttf'
+  const fonts = [
+    { src: ROBOTO_REGULAR, fontWeight: 400 },
+    { src: ROBOTO_BOLD, fontWeight: 700 },
+  ]
 
-  const fontConfig = {
-    family: 'Roboto',
-    fonts: [
-      { src: regularFont, fontWeight: 400 },
-      { src: boldFont, fontWeight: 700 },
-    ],
-  }
-
-  // Register under all names that might be used in PDF components
-  Font.register(fontConfig)
-  Font.register({ ...fontConfig, family: 'sans-serif' })
-  Font.register({ ...fontConfig, family: 'Helvetica' })
-  Font.register({
-    family: 'Helvetica-Bold',
-    fonts: [{ src: boldFont, fontWeight: 700 }],
-  })
+  // Register under ALL possible names used in PDF components
+  Font.register({ family: 'Roboto', fonts })
+  Font.register({ family: 'sans-serif', fonts })
+  Font.register({ family: 'Helvetica', fonts })
+  Font.register({ family: 'Helvetica-Bold', fonts: [{ src: ROBOTO_BOLD, fontWeight: 700 }] })
 
   Font.registerHyphenationCallback((word) => [word])
+  console.log('PDF fonts registered from base64')
 }
