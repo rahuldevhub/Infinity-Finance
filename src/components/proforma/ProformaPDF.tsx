@@ -1,4 +1,4 @@
-import { Document, Page, Text, View, Image } from '@react-pdf/renderer';
+import { Document, Page, Text, View, Image, StyleSheet } from '@react-pdf/renderer';
 import type { ProformaInvoice, BusinessSettings } from '../../types';
 import { registerPDFFonts } from '../../utils/pdfFonts';
 registerPDFFonts();
@@ -28,6 +28,22 @@ const C = { qty: 38, unit: 38, rate: 72, amount: 80 };
 
 const BDR = '#e0e0e0';
 
+// ── Styles at module level — same pattern as QuotationPDF ─────────────────────
+// Brand-dependent colors (headerBg, accentColor) are applied as inline overrides in JSX
+const ps = StyleSheet.create({
+  th: { fontSize: 8, fontFamily: 'Roboto', fontWeight: 700, color: 'white' },
+  td: { fontSize: 9, color: '#2d2d2d', fontFamily: 'Roboto' },
+  billBox: { flex: 1, borderWidth: 0.5, borderColor: BDR, borderStyle: 'solid', borderRadius: 6, paddingVertical: 10, paddingHorizontal: 12 },
+  billLabel: { fontSize: 8, fontFamily: 'Roboto', fontWeight: 700, color: '#888888', letterSpacing: 1.5, marginBottom: 5 },
+  billName: { fontSize: 12, fontFamily: 'Roboto', fontWeight: 700 },
+  billAddr: { fontSize: 9, color: '#444444', marginTop: 2, fontFamily: 'Roboto' },
+  billGstin: { fontSize: 9, fontFamily: 'Roboto', fontWeight: 700, marginTop: 3 },
+  billContact: { fontSize: 9, color: '#666666', marginTop: 2, fontFamily: 'Roboto' },
+  sumRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 3, paddingHorizontal: 8 },
+  sumLabel: { fontSize: 10, color: '#444444', fontFamily: 'Roboto' },
+  sumValue: { fontSize: 10, color: '#2d2d2d', fontFamily: 'Roboto' },
+});
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 interface ProformaPDFProps {
@@ -47,21 +63,6 @@ export function ProformaPDF({ proforma }: ProformaPDFProps) {
     ? Math.round(proforma.cgst_amount / proforma.taxable_value * 100) : 0;
   const igstRate = proforma.taxable_value > 0
     ? Math.round(proforma.igst_amount / proforma.taxable_value * 100) : 0;
-
-  const TH = { fontSize: 8, fontFamily: 'Roboto', fontWeight: 700, color: 'white' } as const;
-  const TD = { fontSize: 9, color: '#2d2d2d', fontFamily: 'Roboto' } as const;
-  const BILL_BOX = {
-    flex: 1, borderWidth: 0.5, borderColor: BDR, borderStyle: 'solid', borderRadius: 6,
-    paddingVertical: 10, paddingHorizontal: 12,
-  } as const;
-  const BILL_LABEL   = { fontSize: 8, fontFamily: 'Roboto', fontWeight: 700, color: '#888888', letterSpacing: 1.5, marginBottom: 5 } as const;
-  const BILL_NAME    = { fontSize: 12, fontFamily: 'Roboto', fontWeight: 700, color: brand.headerBg } as const;
-  const BILL_ADDR    = { fontSize: 9, color: '#444444', marginTop: 2, fontFamily: 'Roboto' } as const;
-  const BILL_GSTIN   = { fontSize: 9, fontFamily: 'Roboto', fontWeight: 700, color: brand.headerBg, marginTop: 3 } as const;
-  const BILL_CONTACT = { fontSize: 9, color: '#666666', marginTop: 2, fontFamily: 'Roboto' } as const;
-  const SUM_ROW   = { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 3, paddingHorizontal: 8 } as const;
-  const SUM_LABEL = { fontSize: 10, color: '#444444', fontFamily: 'Roboto' } as const;
-  const SUM_VALUE = { fontSize: 10, color: '#2d2d2d', fontFamily: 'Roboto' } as const;
 
   return (
     <Document>
@@ -113,22 +114,22 @@ export function ProformaPDF({ proforma }: ProformaPDFProps) {
 
         {/* ── Billed By / Billed To ── */}
         <View style={{ flexDirection: 'row', paddingHorizontal: 32, marginTop: 14 }}>
-          <View style={[BILL_BOX, { marginRight: 12 }]}>
-            <Text style={BILL_LABEL}>BILLED BY</Text>
-            <Text style={BILL_NAME}>{BUSINESS.legalName}</Text>
+          <View style={[ps.billBox, { marginRight: 12 }]}>
+            <Text style={ps.billLabel}>BILLED BY</Text>
+            <Text style={[ps.billName, { color: brand.headerBg }]}>{BUSINESS.legalName}</Text>
             <Text style={{ fontSize: 9, color: brand.accentColor, marginTop: 2, fontFamily: 'Roboto' }}>(Unit of {brand.brandName})</Text>
-            <Text style={BILL_ADDR}>{BUSINESS.address}</Text>
-            <Text style={BILL_ADDR}>{BUSINESS.city}, {BUSINESS.state} - {BUSINESS.pincode}</Text>
-            <Text style={BILL_GSTIN}>GSTIN: {BUSINESS.gstin}</Text>
-            <Text style={BILL_CONTACT}>{brand.email} · {brand.phone}</Text>
+            <Text style={ps.billAddr}>{BUSINESS.address}</Text>
+            <Text style={ps.billAddr}>{BUSINESS.city}, {BUSINESS.state} - {BUSINESS.pincode}</Text>
+            <Text style={[ps.billGstin, { color: brand.headerBg }]}>GSTIN: {BUSINESS.gstin}</Text>
+            <Text style={ps.billContact}>{brand.email} · {brand.phone}</Text>
           </View>
-          <View style={BILL_BOX}>
-            <Text style={BILL_LABEL}>BILLED TO</Text>
-            <Text style={BILL_NAME}>{clientName || '\u2014'}</Text>
-            {proforma.client?.address ? <Text style={BILL_ADDR}>{proforma.client.address}</Text> : null}
-            {proforma.client?.state ? <Text style={BILL_ADDR}>{proforma.client.state}</Text> : null}
-            {proforma.client?.gstin ? <Text style={BILL_GSTIN}>GSTIN: {proforma.client.gstin}</Text> : null}
-            {clientContacts ? <Text style={BILL_CONTACT}>{clientContacts}</Text> : null}
+          <View style={ps.billBox}>
+            <Text style={ps.billLabel}>BILLED TO</Text>
+            <Text style={[ps.billName, { color: brand.headerBg }]}>{clientName || '\u2014'}</Text>
+            {proforma.client?.address ? <Text style={ps.billAddr}>{proforma.client.address}</Text> : null}
+            {proforma.client?.state ? <Text style={ps.billAddr}>{proforma.client.state}</Text> : null}
+            {proforma.client?.gstin ? <Text style={[ps.billGstin, { color: brand.headerBg }]}>GSTIN: {proforma.client.gstin}</Text> : null}
+            {clientContacts ? <Text style={ps.billContact}>{clientContacts}</Text> : null}
           </View>
         </View>
 
@@ -139,11 +140,11 @@ export function ProformaPDF({ proforma }: ProformaPDFProps) {
             backgroundColor: brand.headerBg, flexDirection: 'row',
             paddingVertical: 7, paddingLeft: 8, paddingRight: 8,
           }}>
-            <Text style={[TH, { flex: 1 }]}>Description</Text>
-            <Text style={[TH, { width: C.qty, textAlign: 'center' }]}>Qty</Text>
-            <Text style={[TH, { width: C.unit, textAlign: 'center' }]}>Unit</Text>
-            <Text style={[TH, { width: C.rate, textAlign: 'right', paddingRight: 6 }]}>Rate</Text>
-            <Text style={[TH, { width: C.amount, textAlign: 'right', paddingRight: 8 }]}>Amount</Text>
+            <Text style={[ps.th, { flex: 1 }]}>Description</Text>
+            <Text style={[ps.th, { width: C.qty, textAlign: 'center' }]}>Qty</Text>
+            <Text style={[ps.th, { width: C.unit, textAlign: 'center' }]}>Unit</Text>
+            <Text style={[ps.th, { width: C.rate, textAlign: 'right', paddingRight: 6 }]}>Rate</Text>
+            <Text style={[ps.th, { width: C.amount, textAlign: 'right', paddingRight: 8 }]}>Amount</Text>
           </View>
           {/* Item rows */}
           {proforma.items.filter(i => i.description.trim()).map((item, i) => (
@@ -152,11 +153,11 @@ export function ProformaPDF({ proforma }: ProformaPDFProps) {
               borderBottomWidth: 0.5, borderBottomColor: '#eeeeee', borderBottomStyle: 'solid',
               backgroundColor: i % 2 === 0 ? 'white' : '#fafafa',
             }}>
-              <Text style={[TD, { flex: 1 }]}>{item.description}</Text>
-              <Text style={[TD, { width: C.qty, textAlign: 'center' }]}>{item.quantity}</Text>
-              <Text style={[TD, { width: C.unit, textAlign: 'center' }]}>{item.unit}</Text>
-              <Text style={[TD, { width: C.rate, textAlign: 'right', paddingRight: 6 }]}>{num(item.rate)}</Text>
-              <Text style={[TD, { width: C.amount, textAlign: 'right', paddingRight: 8 }]}>{num(item.amount)}</Text>
+              <Text style={[ps.td, { flex: 1 }]}>{item.description}</Text>
+              <Text style={[ps.td, { width: C.qty, textAlign: 'center' }]}>{item.quantity}</Text>
+              <Text style={[ps.td, { width: C.unit, textAlign: 'center' }]}>{item.unit}</Text>
+              <Text style={[ps.td, { width: C.rate, textAlign: 'right', paddingRight: 6 }]}>{num(item.rate)}</Text>
+              <Text style={[ps.td, { width: C.amount, textAlign: 'right', paddingRight: 8 }]}>{num(item.amount)}</Text>
             </View>
           ))}
         </View>
@@ -164,26 +165,26 @@ export function ProformaPDF({ proforma }: ProformaPDFProps) {
         {/* ── Summary ── */}
         <View style={{ flexDirection: 'row', justifyContent: 'flex-end', paddingHorizontal: 32, marginTop: 8 }}>
           <View style={{ width: '50%' }}>
-            <View style={SUM_ROW}>
-              <Text style={SUM_LABEL}>Subtotal</Text>
-              <Text style={SUM_VALUE}>{fmt(proforma.taxable_value)}</Text>
+            <View style={ps.sumRow}>
+              <Text style={ps.sumLabel}>Subtotal</Text>
+              <Text style={ps.sumValue}>{fmt(proforma.taxable_value)}</Text>
             </View>
             {proforma.include_gst && !proforma.is_igst && (
               <>
-                <View style={SUM_ROW}>
-                  <Text style={SUM_LABEL}>CGST {cgstRate}%</Text>
-                  <Text style={SUM_VALUE}>{fmt(proforma.cgst_amount)}</Text>
+                <View style={ps.sumRow}>
+                  <Text style={ps.sumLabel}>CGST {cgstRate}%</Text>
+                  <Text style={ps.sumValue}>{fmt(proforma.cgst_amount)}</Text>
                 </View>
-                <View style={SUM_ROW}>
-                  <Text style={SUM_LABEL}>SGST {cgstRate}%</Text>
-                  <Text style={SUM_VALUE}>{fmt(proforma.sgst_amount)}</Text>
+                <View style={ps.sumRow}>
+                  <Text style={ps.sumLabel}>SGST {cgstRate}%</Text>
+                  <Text style={ps.sumValue}>{fmt(proforma.sgst_amount)}</Text>
                 </View>
               </>
             )}
             {proforma.include_gst && proforma.is_igst && (
-              <View style={SUM_ROW}>
-                <Text style={SUM_LABEL}>IGST {igstRate}%</Text>
-                <Text style={SUM_VALUE}>{fmt(proforma.igst_amount)}</Text>
+              <View style={ps.sumRow}>
+                <Text style={ps.sumLabel}>IGST {igstRate}%</Text>
+                <Text style={ps.sumValue}>{fmt(proforma.igst_amount)}</Text>
               </View>
             )}
             <View style={{

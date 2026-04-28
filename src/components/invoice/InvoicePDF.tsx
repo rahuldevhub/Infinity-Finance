@@ -1,4 +1,4 @@
-import { Document, Page, Text, View, Image } from '@react-pdf/renderer';
+import { Document, Page, Text, View, Image, StyleSheet } from '@react-pdf/renderer';
 import type { Invoice, BusinessSettings } from '../../types';
 import { registerPDFFonts } from '../../utils/pdfFonts';
 registerPDFFonts();
@@ -31,6 +31,22 @@ const CS = { qty: 38, unit: 38, rate: 72, amount: 80 };
 
 const BDR = '#e0e0e0';
 
+// ── Styles at module level — same pattern as QuotationPDF ─────────────────────
+// Brand-dependent colors (headerBg, accentColor) are applied as inline overrides in JSX
+const ps = StyleSheet.create({
+  th: { fontSize: 8, fontFamily: 'Roboto', fontWeight: 700, color: 'white' },
+  td: { fontSize: 9, color: '#2d2d2d', fontFamily: 'Roboto' },
+  billBox: { flex: 1, borderWidth: 0.5, borderColor: BDR, borderStyle: 'solid', borderRadius: 6, paddingVertical: 10, paddingHorizontal: 12 },
+  billLabel: { fontSize: 8, fontFamily: 'Roboto', fontWeight: 700, color: '#888888', letterSpacing: 1.5, marginBottom: 5 },
+  billName: { fontSize: 12, fontFamily: 'Roboto', fontWeight: 700 },
+  billAddr: { fontSize: 9, color: '#444444', marginTop: 2, fontFamily: 'Roboto' },
+  billGstin: { fontSize: 9, fontFamily: 'Roboto', fontWeight: 700, marginTop: 3 },
+  billContact: { fontSize: 9, color: '#666666', marginTop: 2, fontFamily: 'Roboto' },
+  sumRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 3, paddingHorizontal: 8 },
+  sumLabel: { fontSize: 10, color: '#444444', fontFamily: 'Roboto' },
+  sumValue: { fontSize: 10, color: '#2d2d2d', fontFamily: 'Roboto' },
+});
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 interface InvoicePDFProps {
@@ -50,21 +66,6 @@ export function InvoicePDF({ invoice }: InvoicePDFProps) {
     ? Math.round(invoice.igst_amount / invoice.taxable_value * 100) : 0;
 
   const clientContacts = [invoice.client?.email, invoice.client?.phone].filter(Boolean).join(' · ');
-
-  const TH = { fontSize: 8, fontFamily: 'Roboto', fontWeight: 700, color: 'white' } as const;
-  const TD = { fontSize: 9, color: '#2d2d2d', fontFamily: 'Roboto' } as const;
-  const BILL_BOX = {
-    flex: 1, borderWidth: 0.5, borderColor: BDR, borderStyle: 'solid', borderRadius: 6,
-    paddingVertical: 10, paddingHorizontal: 12,
-  } as const;
-  const BILL_LABEL = { fontSize: 8, fontFamily: 'Roboto', fontWeight: 700, color: '#888888', letterSpacing: 1.5, marginBottom: 5 } as const;
-  const BILL_NAME  = { fontSize: 12, fontFamily: 'Roboto', fontWeight: 700, color: brand.headerBg } as const;
-  const BILL_ADDR  = { fontSize: 9, color: '#444444', marginTop: 2, fontFamily: 'Roboto' } as const;
-  const BILL_GSTIN = { fontSize: 9, fontFamily: 'Roboto', fontWeight: 700, color: brand.headerBg, marginTop: 3 } as const;
-  const BILL_CONTACT = { fontSize: 9, color: '#666666', marginTop: 2, fontFamily: 'Roboto' } as const;
-  const SUM_ROW   = { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 3, paddingHorizontal: 8 } as const;
-  const SUM_LABEL = { fontSize: 10, color: '#444444', fontFamily: 'Roboto' } as const;
-  const SUM_VALUE = { fontSize: 10, color: '#2d2d2d', fontFamily: 'Roboto' } as const;
 
   return (
     <Document>
@@ -120,28 +121,28 @@ export function InvoicePDF({ invoice }: InvoicePDFProps) {
 
         {/* ── Billed By / Billed To ── */}
         <View style={{ flexDirection: 'row', paddingHorizontal: 32, marginTop: 16 }}>
-          <View style={[BILL_BOX, { marginRight: 12 }]}>
-            <Text style={BILL_LABEL}>BILLED BY</Text>
+          <View style={[ps.billBox, { marginRight: 12 }]}>
+            <Text style={ps.billLabel}>BILLED BY</Text>
             {isGst ? (
               <>
-                <Text style={BILL_NAME}>{BUSINESS.legalName}</Text>
+                <Text style={[ps.billName, { color: brand.headerBg }]}>{BUSINESS.legalName}</Text>
                 <Text style={{ fontSize: 9, color: brand.accentColor, marginTop: 2, fontFamily: 'Roboto' }}>(Unit of {brand.brandName})</Text>
               </>
             ) : (
-              <Text style={BILL_NAME}>{brand.brandName}</Text>
+              <Text style={[ps.billName, { color: brand.headerBg }]}>{brand.brandName}</Text>
             )}
-            <Text style={BILL_ADDR}>{BUSINESS.address}</Text>
-            <Text style={BILL_ADDR}>{BUSINESS.city}, {BUSINESS.state} - {BUSINESS.pincode}</Text>
-            {isGst && <Text style={BILL_GSTIN}>GSTIN: {BUSINESS.gstin}</Text>}
-            <Text style={BILL_CONTACT}>{brand.email} · {brand.phone}</Text>
+            <Text style={ps.billAddr}>{BUSINESS.address}</Text>
+            <Text style={ps.billAddr}>{BUSINESS.city}, {BUSINESS.state} - {BUSINESS.pincode}</Text>
+            {isGst && <Text style={[ps.billGstin, { color: brand.headerBg }]}>GSTIN: {BUSINESS.gstin}</Text>}
+            <Text style={ps.billContact}>{brand.email} · {brand.phone}</Text>
           </View>
-          <View style={BILL_BOX}>
-            <Text style={BILL_LABEL}>BILLED TO</Text>
-            <Text style={BILL_NAME}>{invoice.client?.name || '\u2014'}</Text>
-            {invoice.client?.address ? <Text style={BILL_ADDR}>{invoice.client.address}</Text> : null}
-            {invoice.client?.state ? <Text style={BILL_ADDR}>{invoice.client.state}</Text> : null}
-            {invoice.client?.gstin ? <Text style={BILL_GSTIN}>GSTIN: {invoice.client.gstin}</Text> : null}
-            {clientContacts ? <Text style={BILL_CONTACT}>{clientContacts}</Text> : null}
+          <View style={ps.billBox}>
+            <Text style={ps.billLabel}>BILLED TO</Text>
+            <Text style={[ps.billName, { color: brand.headerBg }]}>{invoice.client?.name || '\u2014'}</Text>
+            {invoice.client?.address ? <Text style={ps.billAddr}>{invoice.client.address}</Text> : null}
+            {invoice.client?.state ? <Text style={ps.billAddr}>{invoice.client.state}</Text> : null}
+            {invoice.client?.gstin ? <Text style={[ps.billGstin, { color: brand.headerBg }]}>GSTIN: {invoice.client.gstin}</Text> : null}
+            {clientContacts ? <Text style={ps.billContact}>{clientContacts}</Text> : null}
           </View>
         </View>
 
@@ -168,16 +169,16 @@ export function InvoicePDF({ invoice }: InvoicePDFProps) {
                 backgroundColor: brand.headerBg, flexDirection: 'row',
                 paddingVertical: 7, paddingLeft: 8, paddingRight: 8,
               }}>
-                <Text style={[TH, { flex: 1 }]}>Description</Text>
-                <Text style={[TH, { width: C.hsn, textAlign: 'center' }]}>HSN/SAC</Text>
-                <Text style={[TH, { width: C.qty, textAlign: 'center' }]}>Qty</Text>
-                <Text style={[TH, { width: C.rate, textAlign: 'right', paddingRight: 6 }]}>Rate</Text>
-                <Text style={[TH, { width: C.gst, textAlign: 'center' }]}>GST%</Text>
-                {!invoice.is_igst && <Text style={[TH, { width: C.cgst, textAlign: 'right' }]}>CGST</Text>}
-                <Text style={[TH, { width: invoice.is_igst ? C.igst : C.sgst, textAlign: 'right' }]}>
+                <Text style={[ps.th, { flex: 1 }]}>Description</Text>
+                <Text style={[ps.th, { width: C.hsn, textAlign: 'center' }]}>HSN/SAC</Text>
+                <Text style={[ps.th, { width: C.qty, textAlign: 'center' }]}>Qty</Text>
+                <Text style={[ps.th, { width: C.rate, textAlign: 'right', paddingRight: 6 }]}>Rate</Text>
+                <Text style={[ps.th, { width: C.gst, textAlign: 'center' }]}>GST%</Text>
+                {!invoice.is_igst && <Text style={[ps.th, { width: C.cgst, textAlign: 'right' }]}>CGST</Text>}
+                <Text style={[ps.th, { width: invoice.is_igst ? C.igst : C.sgst, textAlign: 'right' }]}>
                   {invoice.is_igst ? 'IGST' : 'SGST'}
                 </Text>
-                <Text style={[TH, { width: C.total, textAlign: 'right', paddingRight: 8 }]}>Total</Text>
+                <Text style={[ps.th, { width: C.total, textAlign: 'right', paddingRight: 8 }]}>Total</Text>
               </View>
               {/* GST item rows */}
               {invoice.items.map((item, i) => (
@@ -186,16 +187,16 @@ export function InvoicePDF({ invoice }: InvoicePDFProps) {
                   borderBottomWidth: 0.5, borderBottomColor: '#eeeeee', borderBottomStyle: 'solid',
                   backgroundColor: i % 2 === 0 ? 'white' : '#fafafa',
                 }}>
-                  <Text style={[TD, { flex: 1 }]}>{item.description}</Text>
-                  <Text style={[TD, { width: C.hsn, textAlign: 'center' }]}>{item.hsn_sac}</Text>
-                  <Text style={[TD, { width: C.qty, textAlign: 'center' }]}>{item.quantity} {item.unit}</Text>
-                  <Text style={[TD, { width: C.rate, textAlign: 'right', paddingRight: 6 }]}>{num(item.rate)}</Text>
-                  <Text style={[TD, { width: C.gst, textAlign: 'center' }]}>{item.gst_rate}%</Text>
-                  {!invoice.is_igst && <Text style={[TD, { width: C.cgst, textAlign: 'right' }]}>{num(item.cgst)}</Text>}
-                  <Text style={[TD, { width: invoice.is_igst ? C.igst : C.sgst, textAlign: 'right' }]}>
+                  <Text style={[ps.td, { flex: 1 }]}>{item.description}</Text>
+                  <Text style={[ps.td, { width: C.hsn, textAlign: 'center' }]}>{item.hsn_sac}</Text>
+                  <Text style={[ps.td, { width: C.qty, textAlign: 'center' }]}>{item.quantity} {item.unit}</Text>
+                  <Text style={[ps.td, { width: C.rate, textAlign: 'right', paddingRight: 6 }]}>{num(item.rate)}</Text>
+                  <Text style={[ps.td, { width: C.gst, textAlign: 'center' }]}>{item.gst_rate}%</Text>
+                  {!invoice.is_igst && <Text style={[ps.td, { width: C.cgst, textAlign: 'right' }]}>{num(item.cgst)}</Text>}
+                  <Text style={[ps.td, { width: invoice.is_igst ? C.igst : C.sgst, textAlign: 'right' }]}>
                     {num(invoice.is_igst ? item.igst : item.sgst)}
                   </Text>
-                  <Text style={[TD, { width: C.total, textAlign: 'right', paddingRight: 8 }]}>{num(item.total)}</Text>
+                  <Text style={[ps.td, { width: C.total, textAlign: 'right', paddingRight: 8 }]}>{num(item.total)}</Text>
                 </View>
               ))}
             </>
@@ -206,11 +207,11 @@ export function InvoicePDF({ invoice }: InvoicePDFProps) {
                 backgroundColor: brand.headerBg, flexDirection: 'row',
                 paddingVertical: 7, paddingLeft: 8, paddingRight: 8,
               }}>
-                <Text style={[TH, { flex: 1 }]}>Description</Text>
-                <Text style={[TH, { width: CS.qty, textAlign: 'center' }]}>Qty</Text>
-                <Text style={[TH, { width: CS.unit, textAlign: 'center' }]}>Unit</Text>
-                <Text style={[TH, { width: CS.rate, textAlign: 'right', paddingRight: 6 }]}>Rate</Text>
-                <Text style={[TH, { width: CS.amount, textAlign: 'right', paddingRight: 8 }]}>Amount</Text>
+                <Text style={[ps.th, { flex: 1 }]}>Description</Text>
+                <Text style={[ps.th, { width: CS.qty, textAlign: 'center' }]}>Qty</Text>
+                <Text style={[ps.th, { width: CS.unit, textAlign: 'center' }]}>Unit</Text>
+                <Text style={[ps.th, { width: CS.rate, textAlign: 'right', paddingRight: 6 }]}>Rate</Text>
+                <Text style={[ps.th, { width: CS.amount, textAlign: 'right', paddingRight: 8 }]}>Amount</Text>
               </View>
               {/* Non-GST item rows */}
               {invoice.items.map((item, i) => (
@@ -219,11 +220,11 @@ export function InvoicePDF({ invoice }: InvoicePDFProps) {
                   borderBottomWidth: 0.5, borderBottomColor: '#eeeeee', borderBottomStyle: 'solid',
                   backgroundColor: i % 2 === 0 ? 'white' : '#fafafa',
                 }}>
-                  <Text style={[TD, { flex: 1 }]}>{item.description}</Text>
-                  <Text style={[TD, { width: CS.qty, textAlign: 'center' }]}>{item.quantity}</Text>
-                  <Text style={[TD, { width: CS.unit, textAlign: 'center' }]}>{item.unit}</Text>
-                  <Text style={[TD, { width: CS.rate, textAlign: 'right', paddingRight: 6 }]}>{num(item.rate)}</Text>
-                  <Text style={[TD, { width: CS.amount, textAlign: 'right', paddingRight: 8 }]}>{num(item.total)}</Text>
+                  <Text style={[ps.td, { flex: 1 }]}>{item.description}</Text>
+                  <Text style={[ps.td, { width: CS.qty, textAlign: 'center' }]}>{item.quantity}</Text>
+                  <Text style={[ps.td, { width: CS.unit, textAlign: 'center' }]}>{item.unit}</Text>
+                  <Text style={[ps.td, { width: CS.rate, textAlign: 'right', paddingRight: 6 }]}>{num(item.rate)}</Text>
+                  <Text style={[ps.td, { width: CS.amount, textAlign: 'right', paddingRight: 8 }]}>{num(item.total)}</Text>
                 </View>
               ))}
             </>
@@ -234,27 +235,27 @@ export function InvoicePDF({ invoice }: InvoicePDFProps) {
         <View style={{ flexDirection: 'row', justifyContent: 'flex-end', paddingHorizontal: 32, marginTop: 8 }}>
           <View style={{ width: '50%' }}>
             {isGst && (
-              <View style={SUM_ROW}>
-                <Text style={SUM_LABEL}>Taxable Value</Text>
-                <Text style={SUM_VALUE}>{fmt(invoice.taxable_value)}</Text>
+              <View style={ps.sumRow}>
+                <Text style={ps.sumLabel}>Taxable Value</Text>
+                <Text style={ps.sumValue}>{fmt(invoice.taxable_value)}</Text>
               </View>
             )}
             {isGst && !invoice.is_igst && (
               <>
-                <View style={SUM_ROW}>
-                  <Text style={SUM_LABEL}>CGST {cgstRate}%</Text>
-                  <Text style={SUM_VALUE}>{fmt(invoice.cgst_amount)}</Text>
+                <View style={ps.sumRow}>
+                  <Text style={ps.sumLabel}>CGST {cgstRate}%</Text>
+                  <Text style={ps.sumValue}>{fmt(invoice.cgst_amount)}</Text>
                 </View>
-                <View style={SUM_ROW}>
-                  <Text style={SUM_LABEL}>SGST {cgstRate}%</Text>
-                  <Text style={SUM_VALUE}>{fmt(invoice.sgst_amount)}</Text>
+                <View style={ps.sumRow}>
+                  <Text style={ps.sumLabel}>SGST {cgstRate}%</Text>
+                  <Text style={ps.sumValue}>{fmt(invoice.sgst_amount)}</Text>
                 </View>
               </>
             )}
             {isGst && invoice.is_igst && (
-              <View style={SUM_ROW}>
-                <Text style={SUM_LABEL}>IGST {igstRate}%</Text>
-                <Text style={SUM_VALUE}>{fmt(invoice.igst_amount)}</Text>
+              <View style={ps.sumRow}>
+                <Text style={ps.sumLabel}>IGST {igstRate}%</Text>
+                <Text style={ps.sumValue}>{fmt(invoice.igst_amount)}</Text>
               </View>
             )}
             <View style={{
