@@ -24,27 +24,93 @@ function num(n: number): string {
 
 // ── Column widths ─────────────────────────────────────────────────────────────
 
-// GST invoice columns
-const C = { hsn: 55, qty: 30, rate: 65, gst: 38, cgst: 55, sgst: 55, igst: 55, total: 65 };
-// Non-GST simplified columns
+const C  = { hsn: 55, qty: 30, rate: 65, gst: 38, cgst: 55, sgst: 55, igst: 55, total: 65 };
 const CS = { qty: 38, unit: 38, rate: 72, amount: 80 };
-
 const BDR = '#e0e0e0';
 
-// ── Styles at module level — same pattern as QuotationPDF ─────────────────────
-// Brand-dependent colors (headerBg, accentColor) are applied as inline overrides in JSX
+// ── All styles at module level — zero inline fontFamily in JSX ────────────────
 const ps = StyleSheet.create({
-  th: { fontSize: 8, fontFamily: 'Roboto', fontWeight: 700, color: 'white' },
-  td: { fontSize: 9, color: '#2d2d2d', fontFamily: 'Roboto' },
+  // Page
+  page: { fontFamily: 'Roboto', fontSize: 10, backgroundColor: 'white', paddingBottom: 72 },
+
+  // Header
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 16, paddingHorizontal: 32 },
+  headerLeft: { flexDirection: 'row', alignItems: 'center' },
+  logo: { width: 44, height: 44, marginRight: 12 },
+  headerBrandName: { color: 'white', fontSize: 16, fontFamily: 'Roboto', fontWeight: 700, letterSpacing: 1 },
+  headerBrandSub: { fontSize: 9, letterSpacing: 0.5, marginTop: 3, fontFamily: 'Roboto' },
+  headerRight: { alignItems: 'flex-end' },
+  headerContact: { color: '#94a3b8', fontSize: 9, marginBottom: 2, fontFamily: 'Roboto' },
+  headerContactLast: { color: '#94a3b8', fontSize: 9, fontFamily: 'Roboto' },
+
+  // Accent stripe
+  stripe: { height: 3 },
+
+  // Title bar
+  titleBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 32, borderBottomWidth: 0.5, borderBottomColor: '#f0f0f0', borderBottomStyle: 'solid' },
+  titleText: { fontSize: 14, fontFamily: 'Roboto', fontWeight: 700, letterSpacing: 2 },
+  titleMeta: { alignItems: 'flex-end' },
+  metaText: { fontSize: 9, color: '#888888', marginBottom: 1, fontFamily: 'Roboto' },
+  metaTextLast: { fontSize: 9, color: '#888888', fontFamily: 'Roboto' },
+
+  // Bill boxes
+  billedRow: { flexDirection: 'row', paddingHorizontal: 32, marginTop: 16 },
   billBox: { flex: 1, borderWidth: 0.5, borderColor: BDR, borderStyle: 'solid', borderRadius: 6, paddingVertical: 10, paddingHorizontal: 12 },
+  billBoxLeft: { flex: 1, borderWidth: 0.5, borderColor: BDR, borderStyle: 'solid', borderRadius: 6, paddingVertical: 10, paddingHorizontal: 12, marginRight: 12 },
   billLabel: { fontSize: 8, fontFamily: 'Roboto', fontWeight: 700, color: '#888888', letterSpacing: 1.5, marginBottom: 5 },
   billName: { fontSize: 12, fontFamily: 'Roboto', fontWeight: 700 },
+  billUnit: { fontSize: 9, marginTop: 2, fontFamily: 'Roboto' },
   billAddr: { fontSize: 9, color: '#444444', marginTop: 2, fontFamily: 'Roboto' },
   billGstin: { fontSize: 9, fontFamily: 'Roboto', fontWeight: 700, marginTop: 3 },
   billContact: { fontSize: 9, color: '#666666', marginTop: 2, fontFamily: 'Roboto' },
+
+  // Supply details bar
+  supplyBar: { marginHorizontal: 32, marginTop: 12, backgroundColor: '#f8f8f8', borderWidth: 0.5, borderColor: BDR, borderStyle: 'solid', borderRadius: 4, paddingVertical: 6, paddingHorizontal: 12, flexDirection: 'row' },
+  supplyText: { fontSize: 9, color: '#444444', fontFamily: 'Roboto' },
+  supplyTextFirst: { fontSize: 9, color: '#444444', marginRight: 24, fontFamily: 'Roboto' },
+
+  // Table
+  tableWrap: { marginHorizontal: 32, marginTop: 12 },
+  tableHeader: { flexDirection: 'row', paddingVertical: 7, paddingLeft: 8, paddingRight: 8 },
+  tableRow: { flexDirection: 'row', paddingVertical: 6, paddingLeft: 8, paddingRight: 8, borderBottomWidth: 0.5, borderBottomColor: '#eeeeee', borderBottomStyle: 'solid' },
+  tableRowAlt: { flexDirection: 'row', paddingVertical: 6, paddingLeft: 8, paddingRight: 8, borderBottomWidth: 0.5, borderBottomColor: '#eeeeee', borderBottomStyle: 'solid', backgroundColor: '#fafafa' },
+  th: { fontSize: 8, fontFamily: 'Roboto', fontWeight: 700, color: 'white' },
+  td: { fontSize: 9, color: '#2d2d2d', fontFamily: 'Roboto' },
+
+  // Summary
+  summaryOuter: { flexDirection: 'row', justifyContent: 'flex-end', paddingHorizontal: 32, marginTop: 8 },
+  summaryInner: { width: '50%' },
   sumRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 3, paddingHorizontal: 8 },
   sumLabel: { fontSize: 10, color: '#444444', fontFamily: 'Roboto' },
   sumValue: { fontSize: 10, color: '#2d2d2d', fontFamily: 'Roboto' },
+  totalDivider: { marginVertical: 4, marginHorizontal: 8, borderTopWidth: 1, borderTopStyle: 'solid' },
+  totalRow: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 8 },
+  totalLabel: { fontSize: 12, fontFamily: 'Roboto', fontWeight: 700 },
+  totalValue: { fontSize: 12, fontFamily: 'Roboto', fontWeight: 700 },
+
+  // Amount in words
+  amountWords: { paddingHorizontal: 40, marginTop: 6 },
+  amountWordsText: { fontSize: 9, color: '#666666', fontFamily: 'Roboto' },
+
+  // Payment details
+  paymentBox: { marginHorizontal: 32, marginTop: 12, backgroundColor: '#eff6ff', borderWidth: 0.5, borderColor: '#bfdbfe', borderStyle: 'solid', borderRadius: 6, paddingVertical: 10, paddingHorizontal: 12 },
+  paymentTitle: { fontSize: 8, fontFamily: 'Roboto', fontWeight: 700, color: '#1d4ed8', letterSpacing: 1.5, marginBottom: 6 },
+  paymentRow: { fontSize: 9, color: '#333333', lineHeight: 1.8, fontFamily: 'Roboto' },
+  paymentRowBold: { fontSize: 9, fontFamily: 'Roboto', fontWeight: 700, color: '#333333', lineHeight: 1.8 },
+
+  // Notes
+  notesBox: { marginHorizontal: 32, marginTop: 12, borderWidth: 0.5, borderColor: BDR, borderStyle: 'solid', borderRadius: 6, paddingVertical: 10, paddingHorizontal: 12 },
+  notesTitle: { fontSize: 8, fontFamily: 'Roboto', fontWeight: 700, color: '#888888', letterSpacing: 1, marginBottom: 5 },
+  notesContent: { fontSize: 10, color: '#444444', marginBottom: 6, fontFamily: 'Roboto' },
+  notesStd: { fontSize: 9, color: '#aaaaaa', fontFamily: 'Roboto', lineHeight: 1.7 },
+
+  // Thank you banner (fixed above footer)
+  thanksBanner: { position: 'absolute', bottom: 30, left: 0, right: 0, paddingVertical: 10, alignItems: 'center' },
+  thanksBannerText: { color: 'white', fontSize: 11, fontFamily: 'Roboto', fontWeight: 700, letterSpacing: 1.5 },
+
+  // Footer (fixed at bottom)
+  footer: { position: 'absolute', bottom: 0, left: 0, right: 0, paddingVertical: 8, paddingHorizontal: 32, flexDirection: 'row', justifyContent: 'space-between' },
+  footerText: { fontSize: 8, color: '#64748b', fontFamily: 'Roboto' },
 });
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -69,64 +135,56 @@ export function InvoicePDF({ invoice }: InvoicePDFProps) {
 
   return (
     <Document>
-      <Page size="A4" style={{ fontFamily: 'Roboto', backgroundColor: 'white', paddingBottom: 72 }}>
+      <Page size="A4" style={ps.page}>
 
         {/* ── A: Header ── */}
-        <View style={{
-          backgroundColor: brand.headerBg,
-          flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-          paddingVertical: 16, paddingHorizontal: 32,
-        }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            {logoSrc && <Image src={logoSrc} style={{ width: 44, height: 44, marginRight: 12 }} />}
+        <View style={[ps.header, { backgroundColor: brand.headerBg }]}>
+          <View style={ps.headerLeft}>
+            {logoSrc && <Image src={logoSrc} style={ps.logo} />}
             <View>
               {isGst ? (
                 <>
-                  <Text style={{ color: 'white', fontSize: 16, fontFamily: 'Roboto', fontWeight: 700, letterSpacing: 1 }}>{BUSINESS.legalName}</Text>
-                  <Text style={{ color: brand.accentColor, fontSize: 9, letterSpacing: 0.5, marginTop: 3, fontFamily: 'Roboto' }}>Unit of {brand.brandName}</Text>
+                  <Text style={ps.headerBrandName}>{BUSINESS.legalName}</Text>
+                  <Text style={[ps.headerBrandSub, { color: brand.accentColor }]}>Unit of {brand.brandName}</Text>
                 </>
               ) : (
                 <>
-                  <Text style={{ color: 'white', fontSize: 16, fontFamily: 'Roboto', fontWeight: 700, letterSpacing: 1 }}>{brand.brandName}</Text>
-                  <Text style={{ color: brand.accentColor, fontSize: 9, letterSpacing: 0.5, marginTop: 3, fontFamily: 'Roboto' }}>{brand.tagline}</Text>
+                  <Text style={ps.headerBrandName}>{brand.brandName}</Text>
+                  <Text style={[ps.headerBrandSub, { color: brand.accentColor }]}>{brand.tagline}</Text>
                 </>
               )}
             </View>
           </View>
-          <View style={{ alignItems: 'flex-end' }}>
-            <Text style={{ color: '#94a3b8', fontSize: 9, marginBottom: 2, fontFamily: 'Roboto' }}>{brand.email}</Text>
-            <Text style={{ color: '#94a3b8', fontSize: 9, marginBottom: 2, fontFamily: 'Roboto' }}>{brand.website}</Text>
-            <Text style={{ color: '#94a3b8', fontSize: 9, fontFamily: 'Roboto' }}>{brand.phone}</Text>
+          <View style={ps.headerRight}>
+            <Text style={ps.headerContact}>{brand.email}</Text>
+            <Text style={ps.headerContact}>{brand.website}</Text>
+            <Text style={ps.headerContactLast}>{brand.phone}</Text>
           </View>
         </View>
 
         {/* ── B: Accent stripe ── */}
-        <View style={{ backgroundColor: brand.accentColor, height: 3 }} />
+        <View style={[ps.stripe, { backgroundColor: brand.accentColor }]} />
 
         {/* ── Title bar ── */}
-        <View style={{
-          flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-          paddingVertical: 12, paddingHorizontal: 32,
-          borderBottomWidth: 0.5, borderBottomColor: '#f0f0f0', borderBottomStyle: 'solid',
-        }}>
-          <Text style={{ color: brand.headerBg, fontSize: 14, fontFamily: 'Roboto', fontWeight: 700, letterSpacing: 2 }}>
+        <View style={ps.titleBar}>
+          <Text style={[ps.titleText, { color: brand.headerBg }]}>
             {isGst ? 'TAX INVOICE' : 'RECEIPT / INVOICE'}
           </Text>
-          <View style={{ alignItems: 'flex-end' }}>
-            <Text style={{ fontSize: 9, color: '#888888', marginBottom: 1, fontFamily: 'Roboto' }}>Invoice No: {invoice.invoice_number}</Text>
-            <Text style={{ fontSize: 9, color: '#888888', marginBottom: 1, fontFamily: 'Roboto' }}>Date: {dmy(invoice.invoice_date)}</Text>
-            {invoice.due_date ? <Text style={{ fontSize: 9, color: '#888888', fontFamily: 'Roboto' }}>Due Date: {dmy(invoice.due_date)}</Text> : null}
+          <View style={ps.titleMeta}>
+            <Text style={ps.metaText}>Invoice No: {invoice.invoice_number}</Text>
+            <Text style={ps.metaText}>Date: {dmy(invoice.invoice_date)}</Text>
+            {invoice.due_date ? <Text style={ps.metaTextLast}>Due Date: {dmy(invoice.due_date)}</Text> : null}
           </View>
         </View>
 
         {/* ── Billed By / Billed To ── */}
-        <View style={{ flexDirection: 'row', paddingHorizontal: 32, marginTop: 16 }}>
-          <View style={[ps.billBox, { marginRight: 12 }]}>
+        <View style={ps.billedRow}>
+          <View style={ps.billBoxLeft}>
             <Text style={ps.billLabel}>BILLED BY</Text>
             {isGst ? (
               <>
                 <Text style={[ps.billName, { color: brand.headerBg }]}>{BUSINESS.legalName}</Text>
-                <Text style={{ fontSize: 9, color: brand.accentColor, marginTop: 2, fontFamily: 'Roboto' }}>(Unit of {brand.brandName})</Text>
+                <Text style={[ps.billUnit, { color: brand.accentColor }]}>(Unit of {brand.brandName})</Text>
               </>
             ) : (
               <Text style={[ps.billName, { color: brand.headerBg }]}>{brand.brandName}</Text>
@@ -148,27 +206,19 @@ export function InvoicePDF({ invoice }: InvoicePDFProps) {
 
         {/* ── Supply details bar (GST only) ── */}
         {isGst && (
-          <View style={{
-            marginHorizontal: 32, marginTop: 12,
-            backgroundColor: '#f8f8f8', borderWidth: 0.5, borderColor: BDR, borderStyle: 'solid', borderRadius: 4,
-            paddingVertical: 6, paddingHorizontal: 12, flexDirection: 'row',
-          }}>
-            <Text style={{ fontSize: 9, color: '#444444', marginRight: 24, fontFamily: 'Roboto' }}>Place of Supply: {invoice.place_of_supply}</Text>
-            <Text style={{ fontSize: 9, color: '#444444', fontFamily: 'Roboto' }}>
+          <View style={ps.supplyBar}>
+            <Text style={ps.supplyTextFirst}>Place of Supply: {invoice.place_of_supply}</Text>
+            <Text style={ps.supplyText}>
               Tax Type: {invoice.is_igst ? 'IGST (Inter-State)' : 'CGST + SGST (Intra-State)'}
             </Text>
           </View>
         )}
 
         {/* ── Line items table ── */}
-        <View style={{ marginHorizontal: 32, marginTop: 12 }}>
+        <View style={ps.tableWrap}>
           {isGst ? (
             <>
-              {/* GST table header */}
-              <View style={{
-                backgroundColor: brand.headerBg, flexDirection: 'row',
-                paddingVertical: 7, paddingLeft: 8, paddingRight: 8,
-              }}>
+              <View style={[ps.tableHeader, { backgroundColor: brand.headerBg }]}>
                 <Text style={[ps.th, { flex: 1 }]}>Description</Text>
                 <Text style={[ps.th, { width: C.hsn, textAlign: 'center' }]}>HSN/SAC</Text>
                 <Text style={[ps.th, { width: C.qty, textAlign: 'center' }]}>Qty</Text>
@@ -180,13 +230,8 @@ export function InvoicePDF({ invoice }: InvoicePDFProps) {
                 </Text>
                 <Text style={[ps.th, { width: C.total, textAlign: 'right', paddingRight: 8 }]}>Total</Text>
               </View>
-              {/* GST item rows */}
               {(invoice.items || []).map((item, i) => (
-                <View key={i} style={{
-                  flexDirection: 'row', paddingVertical: 6, paddingLeft: 8, paddingRight: 8,
-                  borderBottomWidth: 0.5, borderBottomColor: '#eeeeee', borderBottomStyle: 'solid',
-                  backgroundColor: i % 2 === 0 ? 'white' : '#fafafa',
-                }}>
+                <View key={i} style={i % 2 === 0 ? ps.tableRow : ps.tableRowAlt}>
                   <Text style={[ps.td, { flex: 1 }]}>{item.description}</Text>
                   <Text style={[ps.td, { width: C.hsn, textAlign: 'center' }]}>{item.hsn_sac}</Text>
                   <Text style={[ps.td, { width: C.qty, textAlign: 'center' }]}>{item.quantity} {item.unit}</Text>
@@ -202,24 +247,15 @@ export function InvoicePDF({ invoice }: InvoicePDFProps) {
             </>
           ) : (
             <>
-              {/* Non-GST simplified table header */}
-              <View style={{
-                backgroundColor: brand.headerBg, flexDirection: 'row',
-                paddingVertical: 7, paddingLeft: 8, paddingRight: 8,
-              }}>
+              <View style={[ps.tableHeader, { backgroundColor: brand.headerBg }]}>
                 <Text style={[ps.th, { flex: 1 }]}>Description</Text>
                 <Text style={[ps.th, { width: CS.qty, textAlign: 'center' }]}>Qty</Text>
                 <Text style={[ps.th, { width: CS.unit, textAlign: 'center' }]}>Unit</Text>
                 <Text style={[ps.th, { width: CS.rate, textAlign: 'right', paddingRight: 6 }]}>Rate</Text>
                 <Text style={[ps.th, { width: CS.amount, textAlign: 'right', paddingRight: 8 }]}>Amount</Text>
               </View>
-              {/* Non-GST item rows */}
               {(invoice.items || []).map((item, i) => (
-                <View key={i} style={{
-                  flexDirection: 'row', paddingVertical: 6, paddingLeft: 8, paddingRight: 8,
-                  borderBottomWidth: 0.5, borderBottomColor: '#eeeeee', borderBottomStyle: 'solid',
-                  backgroundColor: i % 2 === 0 ? 'white' : '#fafafa',
-                }}>
+                <View key={i} style={i % 2 === 0 ? ps.tableRow : ps.tableRowAlt}>
                   <Text style={[ps.td, { flex: 1 }]}>{item.description}</Text>
                   <Text style={[ps.td, { width: CS.qty, textAlign: 'center' }]}>{item.quantity}</Text>
                   <Text style={[ps.td, { width: CS.unit, textAlign: 'center' }]}>{item.unit}</Text>
@@ -231,9 +267,9 @@ export function InvoicePDF({ invoice }: InvoicePDFProps) {
           )}
         </View>
 
-        {/* ── Summary (right-aligned, 50% width) ── */}
-        <View style={{ flexDirection: 'row', justifyContent: 'flex-end', paddingHorizontal: 32, marginTop: 8 }}>
-          <View style={{ width: '50%' }}>
+        {/* ── Summary ── */}
+        <View style={ps.summaryOuter}>
+          <View style={ps.summaryInner}>
             {isGst && (
               <View style={ps.sumRow}>
                 <Text style={ps.sumLabel}>Taxable Value</Text>
@@ -258,82 +294,54 @@ export function InvoicePDF({ invoice }: InvoicePDFProps) {
                 <Text style={ps.sumValue}>{fmt(invoice.igst_amount)}</Text>
               </View>
             )}
-            <View style={{
-              borderTopWidth: 1, borderTopColor: brand.headerBg, borderTopStyle: 'solid',
-              marginVertical: 4, marginHorizontal: 8,
-            }} />
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 8 }}>
-              <Text style={{ fontSize: 12, fontFamily: 'Roboto', fontWeight: 700, color: brand.headerBg }}>Grand Total</Text>
-              <Text style={{ fontSize: 12, fontFamily: 'Roboto', fontWeight: 700, color: brand.accentColor }}>{fmt(invoice.total_amount)}</Text>
+            <View style={[ps.totalDivider, { borderTopColor: brand.headerBg }]} />
+            <View style={ps.totalRow}>
+              <Text style={[ps.totalLabel, { color: brand.headerBg }]}>Grand Total</Text>
+              <Text style={[ps.totalValue, { color: brand.accentColor }]}>{fmt(invoice.total_amount)}</Text>
             </View>
           </View>
         </View>
 
         {/* ── Amount in words ── */}
-        <View style={{ paddingHorizontal: 40, marginTop: 6 }}>
-          <Text style={{ fontSize: 9, color: '#666666', fontFamily: 'Roboto' }}>
+        <View style={ps.amountWords}>
+          <Text style={ps.amountWordsText}>
             Amount in Words: {amountToWords(invoice.total_amount)} Only
           </Text>
         </View>
 
         {/* ── Payment details (GST only) ── */}
         {isGst && (
-          <View style={{
-            marginHorizontal: 32, marginTop: 12,
-            backgroundColor: '#eff6ff', borderWidth: 0.5, borderColor: '#bfdbfe', borderStyle: 'solid', borderRadius: 6,
-            paddingVertical: 10, paddingHorizontal: 12,
-          }}>
-            <Text style={{ fontSize: 8, fontFamily: 'Roboto', fontWeight: 700, color: '#1d4ed8', letterSpacing: 1.5, marginBottom: 6 }}>
-              PAYMENT DETAILS
-            </Text>
-            <Text style={{ fontSize: 9, color: '#333333', lineHeight: 1.8, fontFamily: 'Roboto' }}>Bank: {BUSINESS.bank.name}</Text>
-            <Text style={{ fontSize: 9, color: '#333333', lineHeight: 1.8, fontFamily: 'Roboto' }}>Account Name: {BUSINESS.bank.accountName}</Text>
-            <Text style={{ fontSize: 9, fontFamily: 'Roboto', fontWeight: 700, color: '#333333', lineHeight: 1.8 }}>Account No: {BUSINESS.bank.accountNumber}</Text>
-            <Text style={{ fontSize: 9, color: '#333333', lineHeight: 1.8, fontFamily: 'Roboto' }}>IFSC: {BUSINESS.bank.ifsc}</Text>
-            <Text style={{ fontSize: 9, fontFamily: 'Roboto', fontWeight: 700, color: '#333333', lineHeight: 1.8 }}>UPI: {BUSINESS.bank.upi}</Text>
+          <View style={ps.paymentBox}>
+            <Text style={ps.paymentTitle}>PAYMENT DETAILS</Text>
+            <Text style={ps.paymentRow}>Bank: {BUSINESS.bank.name}</Text>
+            <Text style={ps.paymentRow}>Account Name: {BUSINESS.bank.accountName}</Text>
+            <Text style={ps.paymentRowBold}>Account No: {BUSINESS.bank.accountNumber}</Text>
+            <Text style={ps.paymentRow}>IFSC: {BUSINESS.bank.ifsc}</Text>
+            <Text style={ps.paymentRowBold}>UPI: {BUSINESS.bank.upi}</Text>
           </View>
         )}
 
         {/* ── Notes ── */}
-        <View style={{
-          marginHorizontal: 32, marginTop: 12,
-          borderWidth: 0.5, borderColor: BDR, borderStyle: 'solid', borderRadius: 6,
-          paddingVertical: 10, paddingHorizontal: 12,
-        }}>
-          <Text style={{ fontSize: 8, fontFamily: 'Roboto', fontWeight: 700, color: '#888888', letterSpacing: 1, marginBottom: 5 }}>NOTES</Text>
+        <View style={ps.notesBox}>
+          <Text style={ps.notesTitle}>NOTES</Text>
           {invoice.notes ? (
-            <Text style={{ fontSize: 10, color: '#444444', marginBottom: 6, fontFamily: 'Roboto' }}>{invoice.notes}</Text>
+            <Text style={ps.notesContent}>{invoice.notes}</Text>
           ) : null}
-          <Text style={{ fontSize: 9, color: '#aaaaaa', fontFamily: 'Roboto', lineHeight: 1.7 }}>
-            This is a computer-generated invoice and does not require a physical signature.
-          </Text>
-          <Text style={{ fontSize: 9, color: '#aaaaaa', fontFamily: 'Roboto', lineHeight: 1.7 }}>
-            Subject to jurisdiction of Namakkal courts.
-          </Text>
-          <Text style={{ fontSize: 9, color: '#aaaaaa', fontFamily: 'Roboto', lineHeight: 1.7 }}>
-            For any queries: {brand.email}
-          </Text>
+          <Text style={ps.notesStd}>This is a computer-generated invoice and does not require a physical signature.</Text>
+          <Text style={ps.notesStd}>Subject to jurisdiction of Namakkal courts.</Text>
+          <Text style={ps.notesStd}>For any queries: {brand.email}</Text>
         </View>
 
-        {/* ── Thank you banner — pinned just above footer ── */}
-        <View style={{
-          position: 'absolute', bottom: 30, left: 0, right: 0,
-          backgroundColor: brand.accentColor, paddingVertical: 10, alignItems: 'center',
-        }} fixed>
-          <Text style={{ color: 'white', fontSize: 11, fontFamily: 'Roboto', fontWeight: 700, letterSpacing: 1.5 }}>
-            THANK YOU FOR YOUR BUSINESS!
-          </Text>
+        {/* ── Thank you banner ── */}
+        <View style={[ps.thanksBanner, { backgroundColor: brand.accentColor }]} fixed>
+          <Text style={ps.thanksBannerText}>THANK YOU FOR YOUR BUSINESS!</Text>
         </View>
 
-        {/* ── C: Dark footer ── */}
-        <View style={{
-          position: 'absolute', bottom: 0, left: 0, right: 0,
-          backgroundColor: brand.headerBg, paddingVertical: 8, paddingHorizontal: 32,
-          flexDirection: 'row', justifyContent: 'space-between',
-        }} fixed>
-          <Text style={{ fontSize: 8, color: '#64748b', fontFamily: 'Roboto' }}>{brand.website}</Text>
-          <Text style={{ fontSize: 8, color: '#64748b', fontFamily: 'Roboto' }}>{brand.email}</Text>
-          <Text style={{ fontSize: 8, color: '#64748b', fontFamily: 'Roboto' }}>{brand.phone}</Text>
+        {/* ── Footer ── */}
+        <View style={[ps.footer, { backgroundColor: brand.headerBg }]} fixed>
+          <Text style={ps.footerText}>{brand.website}</Text>
+          <Text style={ps.footerText}>{brand.email}</Text>
+          <Text style={ps.footerText}>{brand.phone}</Text>
         </View>
 
       </Page>
