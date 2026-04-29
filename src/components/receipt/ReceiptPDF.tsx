@@ -21,15 +21,24 @@ function formatDate(d: string): string {
   return date.toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' })
 }
 
-function capitalize(s: string): string {
-  if (!s) return '—'
-  return s.charAt(0).toUpperCase() + s.slice(1)
+const PAYMENT_MODE_MAP: Record<string, string> = {
+  upi: 'UPI',
+  bank: 'Bank Transfer',
+  cash: 'Cash',
+  card: 'Card',
+  razorpay: 'Razorpay',
+  cheque: 'Cheque',
+}
+
+function formatPaymentMode(mode: string): string {
+  if (!mode) return '—'
+  return PAYMENT_MODE_MAP[mode.toLowerCase()] || (mode.charAt(0).toUpperCase() + mode.slice(1).toLowerCase())
 }
 
 // ── Styles at module level — no fontFamily (uses react-pdf built-in) ──────────
 const styles = StyleSheet.create({
-  // Page — no fontFamily, flexDirection column by default
-  page: { backgroundColor: '#ffffff' },
+  // Page: explicit flex column so flex:1 on body works correctly
+  page: { display: 'flex', flexDirection: 'column', backgroundColor: '#ffffff' },
 
   // HEADER
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 14, paddingHorizontal: 28 },
@@ -45,19 +54,19 @@ const styles = StyleSheet.create({
 
   // TITLE BAR
   titleBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 28, borderBottomWidth: 0.5, borderBottomColor: '#e8e8e8', borderBottomStyle: 'solid' },
-  docTitle: { fontSize: 14, fontWeight: 700, letterSpacing: 1.5 },
+  docTitle: { fontSize: 14, fontWeight: 700 },
   docMeta: { alignItems: 'flex-end' },
   docMetaText: { fontSize: 9, color: '#888888', lineHeight: 1.8 },
 
-  // BODY — flex: 1 so it fills remaining page height between title bar and footer
-  body: { flex: 1, flexDirection: 'column' },
+  // BODY — flex: 1 makes this grow to fill all space between title bar and banner/footer
+  body: { flex: 1, flexDirection: 'column', paddingBottom: 16 },
 
   // RECEIVED WITH THANKS FROM BOX
   recvBox: { marginTop: 16, marginHorizontal: 28, borderWidth: 0.5, borderColor: '#e0e0e0', borderStyle: 'solid', borderRadius: 6, paddingVertical: 14, paddingHorizontal: 16, backgroundColor: '#fafafa' },
   recvLabel: { fontSize: 8, fontWeight: 700, color: '#888888', letterSpacing: 1, marginBottom: 6 },
-  recvName: { fontSize: 16, fontWeight: 700, marginBottom: 4 },
+  recvName: { fontSize: 18, fontWeight: 700, marginBottom: 4 },
   recvWords: { fontSize: 10, color: '#666666' },
-  recvAmount: { fontSize: 22, fontWeight: 700, marginTop: 6 },
+  recvAmount: { fontSize: 24, fontWeight: 700, marginTop: 6 },
 
   // PAYMENT GRID 2×2
   gridOuter: { marginTop: 14, marginHorizontal: 28, borderWidth: 0.5, borderColor: '#e0e0e0', borderStyle: 'solid', borderRadius: 6, overflow: 'hidden' },
@@ -74,8 +83,8 @@ const styles = StyleSheet.create({
   notesCustom: { fontSize: 10, color: '#444444', marginBottom: 6 },
   notesStd: { fontSize: 9, color: '#aaaaaa', lineHeight: 1.7 },
 
-  // THANK YOU BANNER — marginTop: 'auto' pushes it to bottom of body
-  thanksBanner: { marginTop: 'auto', paddingVertical: 10, paddingHorizontal: 28, alignItems: 'center' },
+  // THANK YOU BANNER — sits naturally below flex:1 body, no gap
+  thanksBanner: { paddingVertical: 10, paddingHorizontal: 28, alignItems: 'center' },
   thanksBannerText: { color: '#ffffff', fontSize: 11, fontWeight: 700, letterSpacing: 1, textAlign: 'center' },
 
   // DARK FOOTER
@@ -124,7 +133,7 @@ export default function ReceiptPDF({ receipt, client }: ReceiptPDFProps) {
           </View>
         </View>
 
-        {/* BODY — fills remaining height, banner pushed to bottom via marginTop: 'auto' */}
+        {/* BODY — flex:1 fills all space; banner/footer naturally follow below */}
         <View style={styles.body}>
 
           {/* SECTION 4: Received with thanks from */}
@@ -144,7 +153,7 @@ export default function ReceiptPDF({ receipt, client }: ReceiptPDFProps) {
               </View>
               <View style={styles.gridCellRight}>
                 <Text style={styles.cellLabel}>PAYMENT MODE</Text>
-                <Text style={[styles.cellValue, { color: brand.headerBg }]}>{capitalize(receipt.payment_mode)}</Text>
+                <Text style={[styles.cellValue, { color: brand.headerBg }]}>{formatPaymentMode(receipt.payment_mode)}</Text>
               </View>
             </View>
             <View style={styles.gridRowBottom}>
@@ -170,11 +179,11 @@ export default function ReceiptPDF({ receipt, client }: ReceiptPDFProps) {
             <Text style={styles.notesStd}>For queries: {brand.email}</Text>
           </View>
 
-          {/* SECTION 7: Thank you banner — pushed to bottom of body */}
-          <View style={[styles.thanksBanner, { backgroundColor: brand.accentColor }]}>
-            <Text style={styles.thanksBannerText}>THANK YOU FOR YOUR PAYMENT!</Text>
-          </View>
+        </View>
 
+        {/* SECTION 7: Thank you banner — sits right after flex:1 body, no gap */}
+        <View style={[styles.thanksBanner, { backgroundColor: brand.accentColor }]}>
+          <Text style={styles.thanksBannerText}>THANK YOU FOR YOUR PAYMENT!</Text>
         </View>
 
         {/* SECTION 8: Dark footer */}
