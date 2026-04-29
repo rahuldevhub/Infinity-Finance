@@ -44,13 +44,13 @@ export const PLACEHOLDER_LOGOS = {
   ritera: `data:image/svg+xml;base64,${btoa(
     '<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48">' +
     '<rect width="48" height="48" rx="4" fill="#1a1a2e"/>' +
-    '<text x="24" y="30" text-anchor="middle" fill="white" font-size="22" font-family="sans-serif" font-weight="bold">R</text>' +
+    '<text x="24" y="30" text-anchor="middle" fill="white" font-size="22" font-weight="bold">R</text>' +
     '</svg>'
   )}`,
   ratixinfo: `data:image/svg+xml;base64,${btoa(
     '<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48">' +
     '<rect width="48" height="48" rx="4" fill="#0f172a"/>' +
-    '<text x="24" y="30" text-anchor="middle" fill="#3b82f6" font-size="16" font-family="sans-serif" font-weight="bold">Rx</text>' +
+    '<text x="24" y="30" text-anchor="middle" fill="#3b82f6" font-size="16" font-weight="bold">Rx</text>' +
     '</svg>'
   )}`,
 };
