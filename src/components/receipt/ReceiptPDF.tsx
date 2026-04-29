@@ -37,8 +37,8 @@ function formatPaymentMode(mode: string): string {
 
 // ── Styles at module level — no fontFamily (uses react-pdf built-in) ──────────
 const styles = StyleSheet.create({
-  // Page: explicit flex column so flex:1 on body works correctly
-  page: { display: 'flex', flexDirection: 'column', backgroundColor: '#ffffff' },
+  // Page — paddingBottom leaves room for absolute-positioned banner + footer
+  page: { backgroundColor: '#ffffff', paddingBottom: 100 },
 
   // HEADER
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 14, paddingHorizontal: 28 },
@@ -58,8 +58,8 @@ const styles = StyleSheet.create({
   docMeta: { alignItems: 'flex-end' },
   docMetaText: { fontSize: 9, color: '#888888', lineHeight: 1.8 },
 
-  // BODY — flex: 1 makes this grow to fill all space between title bar and banner/footer
-  body: { flex: 1, flexDirection: 'column', paddingBottom: 16 },
+  // BODY — normal flow; page paddingBottom reserves space for fixed banner+footer
+  body: { flexDirection: 'column' },
 
   // RECEIVED WITH THANKS FROM BOX
   recvBox: { marginTop: 16, marginHorizontal: 28, borderWidth: 0.5, borderColor: '#e0e0e0', borderStyle: 'solid', borderRadius: 6, paddingVertical: 14, paddingHorizontal: 16, backgroundColor: '#fafafa' },
@@ -83,12 +83,12 @@ const styles = StyleSheet.create({
   notesCustom: { fontSize: 10, color: '#444444', marginBottom: 6 },
   notesStd: { fontSize: 9, color: '#aaaaaa', lineHeight: 1.7 },
 
-  // THANK YOU BANNER — sits naturally below flex:1 body, no gap
-  thanksBanner: { paddingVertical: 10, paddingHorizontal: 28, alignItems: 'center' },
+  // THANK YOU BANNER — fixed just above footer
+  thanksBanner: { position: 'absolute', bottom: 28, left: 0, right: 0, paddingVertical: 10, paddingHorizontal: 28, alignItems: 'center' },
   thanksBannerText: { color: '#ffffff', fontSize: 11, fontWeight: 700, letterSpacing: 1, textAlign: 'center' },
 
-  // DARK FOOTER
-  footer: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8, paddingHorizontal: 28 },
+  // DARK FOOTER — fixed at very bottom
+  footer: { position: 'absolute', bottom: 0, left: 0, right: 0, flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8, paddingHorizontal: 28 },
   footerText: { fontSize: 8, color: '#64748b' },
 })
 
@@ -133,7 +133,7 @@ export default function ReceiptPDF({ receipt, client }: ReceiptPDFProps) {
           </View>
         </View>
 
-        {/* BODY — flex:1 fills all space; banner/footer naturally follow below */}
+        {/* MAIN CONTENT — paddingBottom on page reserves space for fixed banner+footer */}
         <View style={styles.body}>
 
           {/* SECTION 4: Received with thanks from */}
@@ -181,13 +181,13 @@ export default function ReceiptPDF({ receipt, client }: ReceiptPDFProps) {
 
         </View>
 
-        {/* SECTION 7: Thank you banner — sits right after flex:1 body, no gap */}
-        <View style={[styles.thanksBanner, { backgroundColor: brand.accentColor }]}>
+        {/* SECTION 7: Thank you banner — absolute, bottom: 28 */}
+        <View style={[styles.thanksBanner, { backgroundColor: brand.accentColor }]} fixed>
           <Text style={styles.thanksBannerText}>THANK YOU FOR YOUR PAYMENT!</Text>
         </View>
 
-        {/* SECTION 8: Dark footer */}
-        <View style={[styles.footer, { backgroundColor: brand.headerBg }]}>
+        {/* SECTION 8: Dark footer — absolute, bottom: 0 */}
+        <View style={[styles.footer, { backgroundColor: brand.headerBg }]} fixed>
           <Text style={styles.footerText}>{brand.website}</Text>
           <Text style={styles.footerText}>{brand.email}</Text>
           <Text style={styles.footerText}>{brand.phone}</Text>
