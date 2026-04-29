@@ -38,23 +38,23 @@ function formatPaymentMode(mode: string): string {
 // ── Styles at module level — no fontFamily (uses react-pdf built-in) ──────────
 const styles = StyleSheet.create({
   // Page — paddingBottom leaves room for absolute-positioned banner + footer
-  page: { backgroundColor: '#ffffff', paddingBottom: 100 },
+  page: { backgroundColor: '#ffffff', paddingBottom: 110 },
 
   // HEADER
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 14, paddingHorizontal: 28 },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 20, paddingHorizontal: 28 },
   headerLeft: { flexDirection: 'row', alignItems: 'center' },
-  logo: { width: 44, height: 44, objectFit: 'contain', marginRight: 12 },
-  brandName: { color: '#ffffff', fontSize: 16, fontWeight: 700 },
-  brandTag: { fontSize: 9, marginTop: 2 },
+  logo: { width: 52, height: 52, objectFit: 'contain', marginRight: 12 },
+  brandName: { color: '#ffffff', fontSize: 18, fontWeight: 700 },
+  brandTag: { fontSize: 10, marginTop: 2 },
   headerRight: { alignItems: 'flex-end' },
-  contactText: { color: '#94a3b8', fontSize: 9, lineHeight: 1.8 },
+  contactText: { color: '#94a3b8', fontSize: 10, lineHeight: 1.8 },
 
   // STRIPE
   stripe: { height: 3 },
 
   // TITLE BAR
-  titleBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 28, borderBottomWidth: 0.5, borderBottomColor: '#e8e8e8', borderBottomStyle: 'solid' },
-  docTitle: { fontSize: 14, fontWeight: 700 },
+  titleBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 16, paddingHorizontal: 28, borderBottomWidth: 0.5, borderBottomColor: '#e8e8e8', borderBottomStyle: 'solid' },
+  docTitle: { fontSize: 16, fontWeight: 700 },
   docMeta: { alignItems: 'flex-end' },
   docMetaText: { fontSize: 9, color: '#888888', lineHeight: 1.8 },
 
@@ -62,34 +62,41 @@ const styles = StyleSheet.create({
   body: { flexDirection: 'column' },
 
   // RECEIVED WITH THANKS FROM BOX
-  recvBox: { marginTop: 16, marginHorizontal: 28, borderWidth: 0.5, borderColor: '#e0e0e0', borderStyle: 'solid', borderRadius: 6, paddingVertical: 14, paddingHorizontal: 16, backgroundColor: '#fafafa' },
-  recvLabel: { fontSize: 8, fontWeight: 700, color: '#888888', letterSpacing: 1, marginBottom: 6 },
-  recvName: { fontSize: 18, fontWeight: 700, marginBottom: 4 },
-  recvWords: { fontSize: 10, color: '#666666' },
-  recvAmount: { fontSize: 24, fontWeight: 700, marginTop: 6 },
+  recvBox: { marginTop: 16, marginHorizontal: 28, borderWidth: 0.5, borderColor: '#e0e0e0', borderStyle: 'solid', borderRadius: 6, paddingVertical: 20, paddingHorizontal: 16, backgroundColor: '#fafafa' },
+  recvLabel: { fontSize: 9, fontWeight: 700, color: '#888888', letterSpacing: 1, marginBottom: 10 },
+  recvName: { fontSize: 22, fontWeight: 700, marginBottom: 8 },
+  recvWords: { fontSize: 11, color: '#666666' },
+  recvAmount: { fontSize: 28, fontWeight: 700, marginTop: 0 },
 
   // PAYMENT GRID 2×2
   gridOuter: { marginTop: 14, marginHorizontal: 28, borderWidth: 0.5, borderColor: '#e0e0e0', borderStyle: 'solid', borderRadius: 6, overflow: 'hidden' },
   gridRowTop: { flexDirection: 'row', borderBottomWidth: 0.5, borderBottomColor: '#e0e0e0', borderBottomStyle: 'solid' },
   gridRowBottom: { flexDirection: 'row' },
-  gridCellLeft: { flex: 1, paddingVertical: 10, paddingHorizontal: 12, borderRightWidth: 0.5, borderRightColor: '#e0e0e0', borderRightStyle: 'solid' },
-  gridCellRight: { flex: 1, paddingVertical: 10, paddingHorizontal: 12 },
-  cellLabel: { fontSize: 8, fontWeight: 700, color: '#888888', letterSpacing: 0.5, marginBottom: 3 },
-  cellValue: { fontSize: 11, fontWeight: 700 },
+  gridCellLeft: { flex: 1, paddingVertical: 14, paddingHorizontal: 12, borderRightWidth: 0.5, borderRightColor: '#e0e0e0', borderRightStyle: 'solid' },
+  gridCellRight: { flex: 1, paddingVertical: 14, paddingHorizontal: 12 },
+  cellLabel: { fontSize: 9, fontWeight: 700, color: '#888888', letterSpacing: 0.5, marginBottom: 5 },
+  cellValue: { fontSize: 13, fontWeight: 700 },
+
+  // SEPARATOR
+  separator: { marginTop: 20, marginHorizontal: 28, borderTopWidth: 1, borderTopColor: '#f0f0f0', borderTopStyle: 'solid' },
+
+  // PAID STAMP
+  paidStamp: { marginTop: 10, marginHorizontal: 28, alignItems: 'center' },
+  paidStampText: { fontSize: 48, fontWeight: 700, letterSpacing: 8, textAlign: 'center' },
 
   // NOTES
-  notesSection: { marginTop: 14, marginHorizontal: 28, borderTopWidth: 0.5, borderTopColor: '#f0f0f0', borderTopStyle: 'solid', paddingTop: 10 },
-  notesLabel: { fontSize: 8, fontWeight: 700, color: '#888888', marginBottom: 5 },
-  notesCustom: { fontSize: 10, color: '#444444', marginBottom: 6 },
-  notesStd: { fontSize: 9, color: '#aaaaaa', lineHeight: 1.7 },
+  notesSection: { marginTop: 4, marginHorizontal: 28, paddingTop: 14 },
+  notesLabel: { fontSize: 10, fontWeight: 700, color: '#888888', marginBottom: 8 },
+  notesCustom: { fontSize: 11, color: '#444444', marginBottom: 10 },
+  notesStd: { fontSize: 10, color: '#aaaaaa', lineHeight: 1.8 },
 
   // THANK YOU BANNER — fixed just above footer
-  thanksBanner: { position: 'absolute', bottom: 28, left: 0, right: 0, paddingVertical: 10, paddingHorizontal: 28, alignItems: 'center' },
-  thanksBannerText: { color: '#ffffff', fontSize: 11, fontWeight: 700, letterSpacing: 1, textAlign: 'center' },
+  thanksBanner: { position: 'absolute', bottom: 34, left: 0, right: 0, paddingVertical: 14, paddingHorizontal: 28, alignItems: 'center' },
+  thanksBannerText: { color: '#ffffff', fontSize: 13, fontWeight: 700, letterSpacing: 1, textAlign: 'center' },
 
   // DARK FOOTER — fixed at very bottom
-  footer: { position: 'absolute', bottom: 0, left: 0, right: 0, flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8, paddingHorizontal: 28 },
-  footerText: { fontSize: 8, color: '#64748b' },
+  footer: { position: 'absolute', bottom: 0, left: 0, right: 0, flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 10, paddingHorizontal: 28 },
+  footerText: { fontSize: 9, color: '#64748b' },
 })
 
 export default function ReceiptPDF({ receipt, client }: ReceiptPDFProps) {
@@ -166,6 +173,14 @@ export default function ReceiptPDF({ receipt, client }: ReceiptPDFProps) {
                 <Text style={[styles.cellValue, { color: brand.headerBg }]}>{receipt.towards || '—'}</Text>
               </View>
             </View>
+          </View>
+
+          {/* SEPARATOR */}
+          <View style={styles.separator} />
+
+          {/* PAID STAMP */}
+          <View style={styles.paidStamp}>
+            <Text style={[styles.paidStampText, { color: brand.accentColor, opacity: 0.15 }]}>PAID</Text>
           </View>
 
           {/* SECTION 6: Notes */}
