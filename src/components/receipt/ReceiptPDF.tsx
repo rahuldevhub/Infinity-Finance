@@ -26,61 +26,61 @@ function capitalize(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1)
 }
 
-// ── Styles at module level — same pattern as QuotationPDF ─────────────────────
-// Brand-dependent colors (headerBg, accentColor) are applied as inline overrides in JSX
+// ── Styles at module level — no fontFamily (uses react-pdf built-in) ──────────
 const styles = StyleSheet.create({
-  page: { backgroundColor: '#ffffff', paddingBottom: 0 },
+  // Page — no fontFamily, flexDirection column by default
+  page: { backgroundColor: '#ffffff' },
 
   // HEADER
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 16, paddingHorizontal: 32 },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 14, paddingHorizontal: 28 },
   headerLeft: { flexDirection: 'row', alignItems: 'center' },
   logo: { width: 44, height: 44, objectFit: 'contain', marginRight: 12 },
-  brandName: { color: '#ffffff', fontSize: 16, fontWeight: 700, letterSpacing: 1 },
-  brandTag: { fontSize: 9, marginTop: 2, letterSpacing: 0.5, },
+  brandName: { color: '#ffffff', fontSize: 16, fontWeight: 700 },
+  brandTag: { fontSize: 9, marginTop: 2 },
   headerRight: { alignItems: 'flex-end' },
-  contactText: { color: '#94a3b8', fontSize: 9, marginBottom: 2, },
+  contactText: { color: '#94a3b8', fontSize: 9, lineHeight: 1.8 },
 
   // STRIPE
   stripe: { height: 3 },
 
   // TITLE BAR
-  titleBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 32, borderBottomWidth: 0.5, borderBottomColor: '#f0f0f0', borderBottomStyle: 'solid' },
-  docTitle: { fontSize: 14, fontWeight: 700, letterSpacing: 2 },
+  titleBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 28, borderBottomWidth: 0.5, borderBottomColor: '#e8e8e8', borderBottomStyle: 'solid' },
+  docTitle: { fontSize: 14, fontWeight: 700, letterSpacing: 1.5 },
   docMeta: { alignItems: 'flex-end' },
-  docMetaText: { fontSize: 9, color: '#888888', marginBottom: 1, },
+  docMetaText: { fontSize: 9, color: '#888888', lineHeight: 1.8 },
 
-  // BODY
-  body: { paddingHorizontal: 32, paddingTop: 20, paddingBottom: 16 },
+  // BODY — flex: 1 so it fills remaining page height between title bar and footer
+  body: { flex: 1, flexDirection: 'column' },
 
-  // RECEIVED FROM BOX
-  recvBox: { borderWidth: 0.5, borderColor: '#e0e0e0', borderStyle: 'solid', borderRadius: 6, paddingVertical: 14, paddingHorizontal: 16, backgroundColor: '#fafafa' },
-  recvLabel: { fontSize: 8, fontWeight: 700, color: '#888888', letterSpacing: 1.5, marginBottom: 6 },
+  // RECEIVED WITH THANKS FROM BOX
+  recvBox: { marginTop: 16, marginHorizontal: 28, borderWidth: 0.5, borderColor: '#e0e0e0', borderStyle: 'solid', borderRadius: 6, paddingVertical: 14, paddingHorizontal: 16, backgroundColor: '#fafafa' },
+  recvLabel: { fontSize: 8, fontWeight: 700, color: '#888888', letterSpacing: 1, marginBottom: 6 },
   recvName: { fontSize: 16, fontWeight: 700, marginBottom: 4 },
-  recvWords: { fontSize: 10, color: '#666666', marginBottom: 8 },
-  recvAmount: { fontSize: 22, fontWeight: 700 },
+  recvWords: { fontSize: 10, color: '#666666' },
+  recvAmount: { fontSize: 22, fontWeight: 700, marginTop: 6 },
 
-  // PAYMENT GRID
-  gridOuter: { marginTop: 14, borderWidth: 0.5, borderColor: '#e0e0e0', borderStyle: 'solid', borderRadius: 6, overflow: 'hidden' },
+  // PAYMENT GRID 2×2
+  gridOuter: { marginTop: 14, marginHorizontal: 28, borderWidth: 0.5, borderColor: '#e0e0e0', borderStyle: 'solid', borderRadius: 6, overflow: 'hidden' },
   gridRowTop: { flexDirection: 'row', borderBottomWidth: 0.5, borderBottomColor: '#e0e0e0', borderBottomStyle: 'solid' },
   gridRowBottom: { flexDirection: 'row' },
-  gridCellLeft: { flex: 1, paddingVertical: 8, paddingHorizontal: 12, borderRightWidth: 0.5, borderRightColor: '#e0e0e0', borderRightStyle: 'solid' },
-  gridCellRight: { flex: 1, paddingVertical: 8, paddingHorizontal: 12 },
+  gridCellLeft: { flex: 1, paddingVertical: 10, paddingHorizontal: 12, borderRightWidth: 0.5, borderRightColor: '#e0e0e0', borderRightStyle: 'solid' },
+  gridCellRight: { flex: 1, paddingVertical: 10, paddingHorizontal: 12 },
   cellLabel: { fontSize: 8, fontWeight: 700, color: '#888888', letterSpacing: 0.5, marginBottom: 3 },
   cellValue: { fontSize: 11, fontWeight: 700 },
 
   // NOTES
-  notesSection: { marginTop: 10, borderTopWidth: 0.5, borderTopColor: '#f0f0f0', borderTopStyle: 'solid', paddingTop: 10 },
-  notesLabel: { fontSize: 8, fontWeight: 700, color: '#888888', letterSpacing: 1, marginBottom: 5 },
-  notesCustom: { fontSize: 10, color: '#444444', marginBottom: 6, },
+  notesSection: { marginTop: 14, marginHorizontal: 28, borderTopWidth: 0.5, borderTopColor: '#f0f0f0', borderTopStyle: 'solid', paddingTop: 10 },
+  notesLabel: { fontSize: 8, fontWeight: 700, color: '#888888', marginBottom: 5 },
+  notesCustom: { fontSize: 10, color: '#444444', marginBottom: 6 },
   notesStd: { fontSize: 9, color: '#aaaaaa', lineHeight: 1.7 },
 
-  // THANK YOU BANNER
-  thanksBanner: { paddingVertical: 10, paddingHorizontal: 32, alignItems: 'center', marginTop: 20 },
-  thanksBannerText: { color: '#ffffff', fontSize: 11, fontWeight: 700, letterSpacing: 1.5 },
+  // THANK YOU BANNER — marginTop: 'auto' pushes it to bottom of body
+  thanksBanner: { marginTop: 'auto', paddingVertical: 10, paddingHorizontal: 28, alignItems: 'center' },
+  thanksBannerText: { color: '#ffffff', fontSize: 11, fontWeight: 700, letterSpacing: 1, textAlign: 'center' },
 
   // DARK FOOTER
-  footer: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8, paddingHorizontal: 32 },
-  footerText: { fontSize: 8, color: '#64748b', },
+  footer: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8, paddingHorizontal: 28 },
+  footerText: { fontSize: 8, color: '#64748b' },
 })
 
 export default function ReceiptPDF({ receipt, client }: ReceiptPDFProps) {
@@ -96,7 +96,7 @@ export default function ReceiptPDF({ receipt, client }: ReceiptPDFProps) {
     <Document>
       <Page size="A4" style={styles.page}>
 
-        {/* HEADER */}
+        {/* SECTION 1: Dark header */}
         <View style={[styles.header, { backgroundColor: brand.headerBg }]}>
           <View style={styles.headerLeft}>
             {logoSrc && <Image src={logoSrc} style={styles.logo} />}
@@ -112,10 +112,10 @@ export default function ReceiptPDF({ receipt, client }: ReceiptPDFProps) {
           </View>
         </View>
 
-        {/* ACCENT STRIPE */}
+        {/* SECTION 2: Accent stripe */}
         <View style={[styles.stripe, { backgroundColor: brand.accentColor }]} />
 
-        {/* TITLE BAR */}
+        {/* SECTION 3: Title bar */}
         <View style={styles.titleBar}>
           <Text style={[styles.docTitle, { color: brand.headerBg }]}>PAYMENT RECEIPT</Text>
           <View style={styles.docMeta}>
@@ -124,18 +124,18 @@ export default function ReceiptPDF({ receipt, client }: ReceiptPDFProps) {
           </View>
         </View>
 
-        {/* BODY */}
+        {/* BODY — fills remaining height, banner pushed to bottom via marginTop: 'auto' */}
         <View style={styles.body}>
 
-          {/* RECEIVED FROM BOX */}
+          {/* SECTION 4: Received with thanks from */}
           <View style={styles.recvBox}>
             <Text style={styles.recvLabel}>RECEIVED WITH THANKS FROM</Text>
             <Text style={[styles.recvName, { color: brand.headerBg }]}>{clientName}</Text>
-            <Text style={styles.recvWords}>The sum of: {amountToWords(amount)} Only</Text>
+            <Text style={styles.recvWords}>The sum of: {amountToWords(amount)}</Text>
             <Text style={[styles.recvAmount, { color: brand.accentColor }]}>INR {formatAmount(amount)}</Text>
           </View>
 
-          {/* PAYMENT GRID 2x2 */}
+          {/* SECTION 5: Payment details 2×2 grid */}
           <View style={styles.gridOuter}>
             <View style={styles.gridRowTop}>
               <View style={styles.gridCellLeft}>
@@ -159,31 +159,25 @@ export default function ReceiptPDF({ receipt, client }: ReceiptPDFProps) {
             </View>
           </View>
 
-          {/* NOTES */}
+          {/* SECTION 6: Notes */}
           <View style={styles.notesSection}>
-            <Text style={styles.notesLabel}>NOTES</Text>
-            {receipt.notes ? (
-              <Text style={styles.notesCustom}>{receipt.notes}</Text>
-            ) : null}
-            <Text style={styles.notesStd}>
-              This is a computer-generated receipt and does not require a physical signature.
+            <Text style={styles.notesLabel}>Notes</Text>
+            <Text style={styles.notesCustom}>
+              {receipt.notes || 'Thank you for your payment. We look forward to serving you.'}
             </Text>
-            <Text style={styles.notesStd}>
-              This receipt is valid as proof of payment for the amount mentioned above.
-            </Text>
-            <Text style={styles.notesStd}>
-              For any queries, contact us at: {brand.email}
-            </Text>
+            <Text style={styles.notesStd}>This is a computer-generated receipt and does not require a physical signature.</Text>
+            <Text style={styles.notesStd}>This receipt is valid as proof of payment for the amount mentioned above.</Text>
+            <Text style={styles.notesStd}>For queries: {brand.email}</Text>
+          </View>
+
+          {/* SECTION 7: Thank you banner — pushed to bottom of body */}
+          <View style={[styles.thanksBanner, { backgroundColor: brand.accentColor }]}>
+            <Text style={styles.thanksBannerText}>THANK YOU FOR YOUR PAYMENT!</Text>
           </View>
 
         </View>
 
-        {/* THANK YOU BANNER */}
-        <View style={[styles.thanksBanner, { backgroundColor: brand.accentColor }]}>
-          <Text style={styles.thanksBannerText}>THANK YOU FOR YOUR PAYMENT!</Text>
-        </View>
-
-        {/* DARK FOOTER */}
+        {/* SECTION 8: Dark footer */}
         <View style={[styles.footer, { backgroundColor: brand.headerBg }]}>
           <Text style={styles.footerText}>{brand.website}</Text>
           <Text style={styles.footerText}>{brand.email}</Text>
