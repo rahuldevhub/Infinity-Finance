@@ -1,5 +1,8 @@
 import { useState } from 'react';
-import { ChevronLeft, ChevronRight, Plus, Trash2, Pencil, Download, X, TrendingUp, TrendingDown, Wallet, Banknote, CreditCard } from 'lucide-react';
+import {
+  ChevronLeft, ChevronRight, Plus, Trash2, Pencil, Download, X,
+  TrendingUp, TrendingDown, Wallet, Banknote, CreditCard, Scale,
+} from 'lucide-react';
 import {
   ResponsiveContainer,
   BarChart,
@@ -57,15 +60,20 @@ const PAYMENT_MODES: Array<{ value: CashTransaction['payment_mode']; label: stri
 
 type SortBy = 'date-desc' | 'date-asc' | 'amount-desc' | 'amount-asc';
 
-// ─── Helper: payment mode badge ───────────────────────────────────────────────
+// ─── Payment mode badges — colored pills ──────────────────────────────────────
 
 function paymentModeBadge(mode: CashTransaction['payment_mode']) {
   switch (mode) {
-    case 'cash':     return <Badge variant="yellow">CASH</Badge>;
-    case 'bank':     return <Badge variant="blue">BANK</Badge>;
-    case 'upi':      return <Badge variant="gray">UPI</Badge>;
-    case 'card':     return <Badge variant="gray">CARD</Badge>;
-    case 'razorpay': return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">Razorpay</span>;
+    case 'cash':
+      return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800">CASH</span>;
+    case 'bank':
+      return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-600">BANK</span>;
+    case 'upi':
+      return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-700">UPI</span>;
+    case 'card':
+      return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-700">CARD</span>;
+    case 'razorpay':
+      return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-teal-100 text-teal-700">RAZORPAY</span>;
   }
 }
 
@@ -124,7 +132,7 @@ export function CashFlow() {
   const [month, setMonth] = useState(today.getMonth());
 
   const { start, end } = getMonthRange(year, month);
-  const { transactions, loading, createTransaction, updateTransaction, deleteTransaction } = useCashFlow({ start, end });
+  const { transactions, loading, openingBalance, createTransaction, updateTransaction, deleteTransaction } = useCashFlow({ start, end });
 
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(defaultForm());
@@ -171,7 +179,7 @@ export function CashFlow() {
 
   const totalIn = transactions.filter((t) => t.type === 'in').reduce((s, t) => s + t.amount, 0);
   const totalOut = transactions.filter((t) => t.type === 'out').reduce((s, t) => s + t.amount, 0);
-  const netBalance = totalIn - totalOut;
+  const netBalance = openingBalance + totalIn - totalOut;
   const totalCash = transactions.filter((t) => t.payment_mode === 'cash').reduce((s, t) => s + t.amount, 0);
   const totalDigital = transactions
     .filter((t) => ['bank', 'upi', 'card', 'razorpay'].includes(t.payment_mode))
@@ -209,6 +217,8 @@ export function CashFlow() {
       case 'amount-desc': return b.amount - a.amount;
     }
   });
+
+  const showBalRow = filterType === 'all' && openingBalance !== 0;
 
   // ── CSV Export (filtered data) ────────────────────────────────────────────
 
@@ -266,6 +276,13 @@ export function CashFlow() {
     setEditingTransaction(null);
   }
 
+  function openAddForm() {
+    setForm(defaultForm());
+    setEditingTransaction(null);
+    setFormError('');
+    setShowForm(true);
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setFormError('');
@@ -321,84 +338,143 @@ export function CashFlow() {
       <TopBar
         title="Cash Flow"
         actions={
-          <Button size="sm" onClick={() => { setForm(defaultForm()); setEditingTransaction(null); setFormError(''); setShowForm(true); }}>
+          <button
+            onClick={openAddForm}
+            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white rounded-xl bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 shadow-lg shadow-blue-500/25 transition-all"
+          >
             <Plus size={16} /> Add Transaction
-          </Button>
+          </button>
         }
       />
 
       <div className="px-4 md:px-6 py-6 space-y-6">
 
-        {/* Month Selector */}
-        <div className="flex items-center gap-3">
-          <button onClick={prevMonth} className="p-1.5 rounded-lg hover:bg-gray-100 border border-gray-200">
+        {/* Month Selector — pill style */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={prevMonth}
+            className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-600 transition-colors border border-gray-200"
+          >
             <ChevronLeft size={18} />
           </button>
-          <span className="text-sm font-semibold text-gray-700 min-w-[140px] text-center">
+          <div className="bg-gray-900 text-white rounded-full px-6 py-2 text-sm font-semibold min-w-[160px] text-center select-none">
             {getMonthLabel(year, month)}
-          </span>
+          </div>
           <button
             onClick={nextMonth}
             disabled={isCurrentMonth}
-            className="p-1.5 rounded-lg hover:bg-gray-100 border border-gray-200 disabled:opacity-40 disabled:cursor-not-allowed"
+            className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-600 transition-colors border border-gray-200 disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <ChevronRight size={18} />
           </button>
         </div>
 
-        {/* Summary Cards */}
+        {/* Summary Cards — gradient style */}
         {loading ? (
-          <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="h-24 bg-gray-200 rounded-xl animate-pulse" />
+          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="h-28 bg-gray-200 rounded-xl animate-pulse" />
             ))}
           </div>
         ) : (
-          <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-            <Card className="flex flex-col gap-1">
-              <div className="flex items-center gap-2 text-green-600">
-                <TrendingUp size={16} />
+          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
+
+            {/* Opening Balance */}
+            <div
+              style={{ background: 'linear-gradient(135deg, #faf5ff, #f3e8ff)', border: '1px solid #d8b4fe' }}
+              className="rounded-xl p-4 flex flex-col gap-2"
+            >
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-full bg-purple-100 flex items-center justify-center shrink-0">
+                  <Scale size={13} className="text-purple-600" />
+                </div>
+                <span className="text-xs font-medium text-gray-500">Opening Balance</span>
+              </div>
+              <p className={`text-2xl font-bold ${openingBalance > 0 ? 'text-purple-700' : openingBalance < 0 ? 'text-red-700' : 'text-gray-400'}`}>
+                {openingBalance < 0 && '−'}{formatCurrency(Math.abs(openingBalance))}
+              </p>
+              <p className="text-xs text-gray-400 leading-tight">Carried from previous months</p>
+            </div>
+
+            {/* Money In */}
+            <div
+              style={{ background: 'linear-gradient(135deg, #f0fdf4, #dcfce7)', border: '1px solid #86efac' }}
+              className="rounded-xl p-4 flex flex-col gap-2"
+            >
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-full bg-green-100 flex items-center justify-center shrink-0">
+                  <TrendingUp size={13} className="text-green-600" />
+                </div>
                 <span className="text-xs font-medium text-gray-500">Money In</span>
               </div>
-              <p className="text-lg font-bold text-green-700">{formatCurrency(totalIn)}</p>
-            </Card>
+              <p className="text-2xl font-bold text-green-700">{formatCurrency(totalIn)}</p>
+              <p className="text-xs text-gray-400">This month</p>
+            </div>
 
-            <Card className="flex flex-col gap-1">
-              <div className="flex items-center gap-2 text-red-600">
-                <TrendingDown size={16} />
+            {/* Money Out */}
+            <div
+              style={{ background: 'linear-gradient(135deg, #fff5f5, #fee2e2)', border: '1px solid #fca5a5' }}
+              className="rounded-xl p-4 flex flex-col gap-2"
+            >
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-full bg-red-100 flex items-center justify-center shrink-0">
+                  <TrendingDown size={13} className="text-red-600" />
+                </div>
                 <span className="text-xs font-medium text-gray-500">Money Out</span>
               </div>
-              <p className="text-lg font-bold text-red-700">{formatCurrency(totalOut)}</p>
-            </Card>
+              <p className="text-2xl font-bold text-red-700">{formatCurrency(totalOut)}</p>
+              <p className="text-xs text-gray-400">This month</p>
+            </div>
 
-            <Card className="flex flex-col gap-1">
+            {/* Net Balance */}
+            <div
+              style={{ background: 'linear-gradient(135deg, #eff6ff, #dbeafe)', border: '1px solid #93c5fd' }}
+              className="rounded-xl p-4 flex flex-col gap-2"
+            >
               <div className="flex items-center gap-2">
-                <Wallet size={16} className={netBalance >= 0 ? 'text-blue-600' : 'text-red-600'} />
+                <div className="w-7 h-7 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
+                  <Wallet size={13} className={netBalance >= 0 ? 'text-blue-600' : 'text-red-600'} />
+                </div>
                 <span className="text-xs font-medium text-gray-500">Net Balance</span>
               </div>
-              <p className={`text-lg font-bold ${netBalance >= 0 ? 'text-blue-700' : 'text-red-700'}`}>
-                {formatCurrency(Math.abs(netBalance))}
+              <p className={`text-2xl font-bold ${netBalance >= 0 ? 'text-blue-700' : 'text-red-700'}`}>
+                {netBalance < 0 && '−'}{formatCurrency(Math.abs(netBalance))}
               </p>
-              <Badge variant={netBalance >= 0 ? 'blue' : 'red'}>
-                {netBalance >= 0 ? 'Surplus' : 'Deficit'}
-              </Badge>
-            </Card>
+              <span className={`self-start inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${netBalance >= 0 ? 'bg-blue-100 text-blue-700' : 'bg-red-100 text-red-700'}`}>
+                {netBalance >= 0 ? 'SURPLUS' : 'DEFICIT'}
+              </span>
+            </div>
 
-            <Card className="flex flex-col gap-1">
-              <div className="flex items-center gap-2 text-yellow-600">
-                <Banknote size={16} />
+            {/* Cash */}
+            <div
+              style={{ background: 'linear-gradient(135deg, #fffbeb, #fef3c7)', border: '1px solid #fcd34d' }}
+              className="rounded-xl p-4 flex flex-col gap-2"
+            >
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
+                  <Banknote size={13} className="text-amber-600" />
+                </div>
                 <span className="text-xs font-medium text-gray-500">Cash</span>
               </div>
-              <p className="text-lg font-bold text-gray-800">{formatCurrency(totalCash)}</p>
-            </Card>
+              <p className="text-2xl font-bold text-amber-700">{formatCurrency(totalCash)}</p>
+              <p className="text-xs text-gray-400">Cash payments</p>
+            </div>
 
-            <Card className="flex flex-col gap-1">
-              <div className="flex items-center gap-2 text-blue-600">
-                <CreditCard size={16} />
+            {/* Digital */}
+            <div
+              style={{ background: 'linear-gradient(135deg, #f0f9ff, #e0f2fe)', border: '1px solid #7dd3fc' }}
+              className="rounded-xl p-4 flex flex-col gap-2"
+            >
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-full bg-sky-100 flex items-center justify-center shrink-0">
+                  <CreditCard size={13} className="text-sky-600" />
+                </div>
                 <span className="text-xs font-medium text-gray-500">Digital</span>
               </div>
-              <p className="text-lg font-bold text-gray-800">{formatCurrency(totalDigital)}</p>
-            </Card>
+              <p className="text-2xl font-bold text-sky-700">{formatCurrency(totalDigital)}</p>
+              <p className="text-xs text-gray-400">UPI · Bank · Card</p>
+            </div>
+
           </div>
         )}
 
@@ -408,7 +484,17 @@ export function CashFlow() {
             <CardTitle className="mb-4">Daily Cash Flow</CardTitle>
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={chartData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <defs>
+                  <linearGradient id="gradIn" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#22c55e" />
+                    <stop offset="100%" stopColor="#16a34a" />
+                  </linearGradient>
+                  <linearGradient id="gradOut" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#f87171" />
+                    <stop offset="100%" stopColor="#dc2626" />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
                 <XAxis
                   dataKey="day"
                   tick={{ fontSize: 11, fill: '#6b7280' }}
@@ -422,9 +508,9 @@ export function CashFlow() {
                   tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`}
                   width={48}
                 />
-                <Tooltip content={<ChartTooltip />} />
-                <Bar dataKey="In" fill="#16a34a" radius={[3, 3, 0, 0]} maxBarSize={28} />
-                <Bar dataKey="Out" fill="#dc2626" radius={[3, 3, 0, 0]} maxBarSize={28} />
+                <Tooltip content={<ChartTooltip />} cursor={{ fill: '#f9fafb' }} />
+                <Bar dataKey="In" fill="url(#gradIn)" radius={[4, 4, 0, 0]} maxBarSize={28} />
+                <Bar dataKey="Out" fill="url(#gradOut)" radius={[4, 4, 0, 0]} maxBarSize={28} />
               </BarChart>
             </ResponsiveContainer>
           </Card>
@@ -439,22 +525,18 @@ export function CashFlow() {
             </Button>
           </div>
 
-          {/* Filter / Sort Bar */}
+          {/* Filter / Sort Bar — modern pills */}
           <div className="px-6 py-3 border-b border-gray-100 flex flex-col sm:flex-row gap-2 flex-wrap items-start sm:items-center">
             {/* Type pills */}
-            <div className="flex rounded-lg border border-gray-200 overflow-hidden shrink-0">
+            <div className="flex gap-1.5 shrink-0">
               {(['all', 'in', 'out'] as const).map((v) => (
                 <button
                   key={v}
                   onClick={() => setFilterType(v)}
-                  className={`px-3 py-1.5 text-xs font-semibold transition-colors ${
+                  className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-colors ${
                     filterType === v
-                      ? v === 'in'
-                        ? 'bg-green-600 text-white'
-                        : v === 'out'
-                        ? 'bg-red-600 text-white'
-                        : 'bg-gray-700 text-white'
-                      : 'bg-white text-gray-500 hover:bg-gray-50'
+                      ? 'bg-gray-900 text-white'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                   }`}
                 >
                   {v === 'all' ? 'All' : v === 'in' ? 'IN' : 'OUT'}
@@ -466,7 +548,7 @@ export function CashFlow() {
             <select
               value={filterCategory}
               onChange={(e) => setFilterCategory(e.target.value)}
-              className="px-3 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="px-3 py-1.5 border border-gray-200 rounded-xl text-xs text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
             >
               <option value="">All Categories</option>
               {ALL_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
@@ -476,7 +558,7 @@ export function CashFlow() {
             <select
               value={filterMode}
               onChange={(e) => setFilterMode(e.target.value)}
-              className="px-3 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="px-3 py-1.5 border border-gray-200 rounded-xl text-xs text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
             >
               <option value="">All Modes</option>
               {PAYMENT_MODES.map((pm) => <option key={pm.value} value={pm.value}>{pm.label}</option>)}
@@ -486,7 +568,7 @@ export function CashFlow() {
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as SortBy)}
-              className="px-3 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="px-3 py-1.5 border border-gray-200 rounded-xl text-xs text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
             >
               <option value="date-desc">Date: Newest First</option>
               <option value="date-asc">Date: Oldest First</option>
@@ -531,49 +613,101 @@ export function CashFlow() {
                       ))}
                     </tr>
                   ))
-                ) : filteredTransactions.length === 0 ? (
-                  <tr>
-                    <td colSpan={9} className="px-6 py-12 text-center text-gray-400 text-sm">
-                      {transactions.length === 0 ? 'No transactions this month.' : 'No transactions match the current filters.'}
-                    </td>
-                  </tr>
                 ) : (
-                  filteredTransactions.map((t) => (
-                    <tr key={t.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-4 py-3 text-gray-700 whitespace-nowrap">{formatDate(t.date)}</td>
-                      <td className="px-4 py-3">
-                        <Badge variant={t.type === 'in' ? 'green' : 'red'}>
-                          {t.type === 'in' ? 'IN' : 'OUT'}
-                        </Badge>
-                      </td>
-                      <td className="px-4 py-3 text-gray-700">{t.category}</td>
-                      <td className="px-4 py-3 text-gray-700 max-w-[200px] truncate">{t.description}</td>
-                      <td className="px-4 py-3">{paymentModeBadge(t.payment_mode)}</td>
-                      <td className="px-4 py-3 text-gray-500 text-xs">{t.reference ?? '—'}</td>
-                      <td className="px-4 py-3 text-gray-500 text-xs">{t.sub_brand ?? '—'}</td>
-                      <td className={`px-4 py-3 text-right font-semibold whitespace-nowrap ${t.type === 'in' ? 'text-green-700' : 'text-red-700'}`}>
-                        {t.type === 'out' && '−'}{formatCurrency(t.amount)}
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        <div className="flex items-center justify-center gap-1">
-                          <button
-                            onClick={() => openEdit(t)}
-                            className="p-1 rounded-lg hover:bg-blue-50 text-gray-400 hover:text-blue-500 transition-colors"
-                            title="Edit transaction"
-                          >
-                            <Pencil size={15} />
-                          </button>
-                          <button
-                            onClick={() => handleDelete(t.id)}
-                            className="p-1 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors"
-                            title="Delete transaction"
-                          >
-                            <Trash2 size={15} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
+                  <>
+                    {/* Opening Balance row */}
+                    {showBalRow && (
+                      <tr className="bg-purple-50/40">
+                        <td className="px-4 py-3 text-gray-500 whitespace-nowrap text-sm border-l-[3px] border-l-purple-400">
+                          {formatDate(start)}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-700">BAL</span>
+                        </td>
+                        <td className="px-4 py-3 text-gray-500 text-sm">Opening Balance</td>
+                        <td className="px-4 py-3 text-gray-400 text-sm">Carried Forward</td>
+                        <td className="px-4 py-3 text-gray-300">—</td>
+                        <td className="px-4 py-3 text-gray-300 text-xs">—</td>
+                        <td className="px-4 py-3 text-gray-300 text-xs">—</td>
+                        <td className="px-4 py-3 text-right font-bold whitespace-nowrap text-purple-700">
+                          {openingBalance < 0 && '−'}{formatCurrency(Math.abs(openingBalance))}
+                        </td>
+                        <td className="px-4 py-3 text-center text-gray-300 text-xs">—</td>
+                      </tr>
+                    )}
+
+                    {/* Regular transaction rows */}
+                    {filteredTransactions.map((t) => (
+                      <tr key={t.id} className="hover:bg-gray-50 transition-colors">
+                        <td className={`px-4 py-3 text-gray-700 whitespace-nowrap border-l-[3px] ${t.type === 'in' ? 'border-l-green-500' : 'border-l-red-500'}`}>
+                          {formatDate(t.date)}
+                        </td>
+                        <td className="px-4 py-3">
+                          <Badge variant={t.type === 'in' ? 'green' : 'red'}>
+                            {t.type === 'in' ? 'IN' : 'OUT'}
+                          </Badge>
+                        </td>
+                        <td className="px-4 py-3 text-gray-700">{t.category}</td>
+                        <td className="px-4 py-3 text-gray-700 max-w-[200px] truncate">{t.description}</td>
+                        <td className="px-4 py-3">{paymentModeBadge(t.payment_mode)}</td>
+                        <td className="px-4 py-3 text-gray-500 text-xs">{t.reference ?? '—'}</td>
+                        <td className="px-4 py-3 text-gray-500 text-xs">{t.sub_brand ?? '—'}</td>
+                        <td className={`px-4 py-3 text-right font-bold text-base whitespace-nowrap ${t.type === 'in' ? 'text-green-700' : 'text-red-700'}`}>
+                          {t.type === 'out' && '−'}{formatCurrency(t.amount)}
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <div className="flex items-center justify-center gap-1">
+                            <button
+                              onClick={() => openEdit(t)}
+                              className="p-1 rounded-lg hover:bg-blue-50 text-gray-400 hover:text-blue-500 transition-colors"
+                              title="Edit transaction"
+                            >
+                              <Pencil size={15} />
+                            </button>
+                            <button
+                              onClick={() => handleDelete(t.id)}
+                              className="p-1 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors"
+                              title="Delete transaction"
+                            >
+                              <Trash2 size={15} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+
+                    {/* Empty states */}
+                    {filteredTransactions.length === 0 && showBalRow && (
+                      <tr>
+                        <td colSpan={9} className="px-6 py-8 text-center text-gray-400 text-sm italic">
+                          No transactions recorded this month.
+                        </td>
+                      </tr>
+                    )}
+                    {filteredTransactions.length === 0 && !showBalRow && transactions.length === 0 && (
+                      <tr>
+                        <td colSpan={9} className="px-6 py-16 text-center">
+                          <div className="flex flex-col items-center gap-3">
+                            <span className="text-5xl">💸</span>
+                            <p className="text-gray-600 font-semibold text-base">No transactions in {getMonthLabel(year, month)}</p>
+                            <button
+                              onClick={openAddForm}
+                              className="mt-1 inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+                            >
+                              <Plus size={14} /> Add Transaction
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                    {filteredTransactions.length === 0 && !showBalRow && transactions.length > 0 && (
+                      <tr>
+                        <td colSpan={9} className="px-6 py-10 text-center text-gray-400 text-sm">
+                          No transactions match the current filters.
+                        </td>
+                      </tr>
+                    )}
+                  </>
                 )}
               </tbody>
             </table>

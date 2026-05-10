@@ -28,8 +28,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png'],
       manifest: {
-        name: 'Infinity GST',
-        short_name: 'InfGST',
+        name: 'Infinity Enterprises',
+        short_name: 'InfEnt',
         description: 'GST Accounting for Infinity Enterprises',
         theme_color: '#1a56db',
         background_color: '#ffffff',

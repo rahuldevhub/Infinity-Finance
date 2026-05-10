@@ -73,7 +73,7 @@ export function Sidebar({ onSignOut, userName }: SidebarProps) {
             <Building2 size={20} className="text-white" />
           </div>
           <div>
-            <p className="text-sm font-bold text-gray-900">Infinity GST</p>
+            <p className="text-sm font-bold text-gray-900">Infinity Enterprises</p>
             <p className="text-xs text-gray-500">Accounting</p>
           </div>
         </div>

@@ -24,6 +24,7 @@ interface Filters {
 export function useCashFlow(filters?: Filters) {
   const [transactions, setTransactions] = useState<CashTransaction[]>([]);
   const [loading, setLoading] = useState(true);
+  const [openingBalance, setOpeningBalance] = useState(0);
 
   const fetch = useCallback(async () => {
     setLoading(true);
@@ -33,6 +34,21 @@ export function useCashFlow(filters?: Filters) {
     if (filters?.type) q = q.eq('type', filters.type);
     const { data } = await q;
     setTransactions(data || []);
+
+    // Calculate opening balance: sum of all transactions before the start date
+    if (filters?.start) {
+      const { data: prevData } = await supabase
+        .from('cash_transactions')
+        .select('type, amount')
+        .lt('date', filters.start);
+      const bal = (prevData || []).reduce((sum, t) => {
+        return sum + (t.type === 'in' ? t.amount : -t.amount);
+      }, 0);
+      setOpeningBalance(bal);
+    } else {
+      setOpeningBalance(0);
+    }
+
     setLoading(false);
   }, [filters?.start, filters?.end, filters?.type]);
 
@@ -65,5 +81,5 @@ export function useCashFlow(filters?: Filters) {
     await fetch();
   }
 
-  return { transactions, loading, refetch: fetch, createTransaction, updateTransaction, deleteTransaction };
+  return { transactions, loading, openingBalance, refetch: fetch, createTransaction, updateTransaction, deleteTransaction };
 }
