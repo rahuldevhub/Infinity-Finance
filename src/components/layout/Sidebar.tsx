@@ -1,9 +1,13 @@
+import { useState, useRef, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import {
   LayoutDashboard, FileText, Receipt, BarChart2,
   FileCog, Users, Settings, LogOut, Building2,
-  Wallet, ClipboardList, FileCheck, BadgeCheck
+  Wallet, ClipboardList, FileCheck, BadgeCheck,
+  ChevronsUpDown, Check,
 } from 'lucide-react';
+import { useWorkspace } from '../../context/WorkspaceContext';
 
 interface NavItem {
   to: string;
@@ -18,19 +22,13 @@ interface NavSection {
 
 const navSections: NavSection[] = [
   {
-    items: [
-      { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
-    ],
-  },
-  {
-    label: 'CLIENTS',
-    items: [
-      { to: '/clients', icon: Users, label: 'Clients' },
-    ],
+    label: 'OVERVIEW',
+    items: [{ to: '/', icon: LayoutDashboard, label: 'Dashboard' }],
   },
   {
     label: 'SALES',
     items: [
+      { to: '/clients', icon: Users, label: 'Clients' },
       { to: '/quotations', icon: ClipboardList, label: 'Quotations' },
       { to: '/proforma', icon: FileCheck, label: 'Proforma Invoices' },
       { to: '/invoices', icon: FileText, label: 'Invoices' },
@@ -38,14 +36,9 @@ const navSections: NavSection[] = [
     ],
   },
   {
-    label: 'EXPENSES',
+    label: 'FINANCE',
     items: [
       { to: '/expenses', icon: Receipt, label: 'Expenses' },
-    ],
-  },
-  {
-    label: 'INTERNAL',
-    items: [
       { to: '/cash-flow', icon: Wallet, label: 'Cash Flow' },
     ],
   },
@@ -58,6 +51,93 @@ const navSections: NavSection[] = [
   },
 ];
 
+function WorkspaceSwitcher() {
+  const { workspace, setWorkspace, workspaces } = useWorkspace();
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function onClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener('mousedown', onClick);
+    return () => document.removeEventListener('mousedown', onClick);
+  }, []);
+
+  return (
+    <div ref={ref} className="relative px-3 pt-4 pb-3">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="w-full flex items-center gap-2.5 rounded-xl px-2.5 py-2.5 hover:bg-gray-50 transition-colors"
+      >
+        <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: workspace.accent }}>
+          <Building2 size={19} className="text-white" />
+        </div>
+        <div className="min-w-0 flex-1 text-left">
+          <p className="text-sm font-bold text-gray-900 truncate flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: workspace.accent }} />
+            {workspace.name}
+          </p>
+          <p className="text-[11px] text-gray-400 truncate">{workspace.sub}</p>
+        </div>
+        <ChevronsUpDown size={15} className="text-gray-300 shrink-0" />
+      </button>
+
+      {open && (
+        <div className="absolute left-3 right-3 top-full z-50 mt-1 rounded-xl border border-gray-100 bg-white p-1.5 shadow-lg shadow-gray-200/60">
+          <p className="px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-widest text-gray-400">Workspaces</p>
+          {workspaces.map((w) => (
+            <button
+              key={w.id}
+              onClick={() => { setWorkspace(w.id); setOpen(false); }}
+              className="w-full flex items-center gap-2.5 rounded-lg px-2.5 py-2 hover:bg-gray-50 transition-colors"
+            >
+              <div className="w-7 h-7 rounded-md flex items-center justify-center shrink-0" style={{ background: w.accent }}>
+                <Building2 size={15} className="text-white" />
+              </div>
+              <div className="min-w-0 flex-1 text-left">
+                <p className="text-sm font-medium text-gray-800 truncate">{w.name}</p>
+                <p className="text-[11px] text-gray-400 truncate">{w.sub}</p>
+              </div>
+              {workspace.id === w.id && <Check size={15} className="shrink-0" style={{ color: w.accent }} />}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function NavRow({ to, Icon, label }: { to: string; Icon: React.ElementType; label: string }) {
+  return (
+    <NavLink to={to} end={to === '/'} className="relative block">
+      {({ isActive }) => (
+        <div className="relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium">
+          {isActive && (
+            <motion.span
+              layoutId="sidebar-active"
+              className="absolute inset-0 rounded-lg"
+              style={{ background: 'rgba(var(--accent-rgb), 0.10)' }}
+              transition={{ type: 'spring', stiffness: 480, damping: 38 }}
+            />
+          )}
+          <Icon
+            size={18}
+            className="relative z-10 shrink-0"
+            style={{ color: isActive ? 'var(--accent)' : '#9ca3af' }}
+          />
+          <span
+            className="relative z-10"
+            style={{ color: isActive ? 'var(--accent)' : '#4b5563' }}
+          >
+            {label}
+          </span>
+        </div>
+      )}
+    </NavLink>
+  );
+}
+
 interface SidebarProps {
   onSignOut: () => void;
   userName: string;
@@ -65,77 +145,36 @@ interface SidebarProps {
 
 export function Sidebar({ onSignOut, userName }: SidebarProps) {
   return (
-    <aside className="hidden md:flex flex-col w-64 bg-white border-r border-gray-200 h-screen sticky top-0">
-      {/* Logo */}
-      <div className="px-6 py-5 border-b border-gray-200">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-blue-600 flex items-center justify-center">
-            <Building2 size={20} className="text-white" />
-          </div>
-          <div>
-            <p className="text-sm font-bold text-gray-900">Infinity Enterprises</p>
-            <p className="text-xs text-gray-500">Accounting</p>
-          </div>
-        </div>
+    <aside className="hidden lg:flex flex-col w-64 h-screen sticky top-0">
+      <div className="border-b border-gray-100/80">
+        <WorkspaceSwitcher />
       </div>
 
-      {/* Nav */}
-      <nav className="flex-1 overflow-y-auto px-3 py-4">
+      <nav className="flex-1 overflow-y-auto py-3">
         {navSections.map((section, si) => (
-          <div key={si} className={si > 0 ? 'mt-6' : ''}>
+          <div key={si} className="mb-1">
             {section.label && (
-              <p
-                className="px-3 mb-1 text-gray-400 font-medium uppercase"
-                style={{ fontSize: 10, letterSpacing: '0.08em' }}
-              >
+              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest px-6 mt-4 mb-2">
                 {section.label}
               </p>
             )}
-            <div className="space-y-0.5">
+            <div className="px-3 space-y-1">
               {section.items.map(({ to, icon: Icon, label }) => (
-                <NavLink
-                  key={to}
-                  to={to}
-                  end={to === '/'}
-                  className={({ isActive }) =>
-                    `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors
-                    ${isActive
-                      ? 'bg-blue-50 text-blue-700'
-                      : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-                    }`
-                  }
-                >
-                  <Icon size={18} />
-                  {label}
-                </NavLink>
+                <NavRow key={to} to={to} Icon={Icon} label={label} />
               ))}
             </div>
           </div>
         ))}
       </nav>
 
-      {/* Settings — pinned above user block */}
       <div className="px-3 pt-2">
-        <NavLink
-          to="/settings"
-          className={({ isActive }) =>
-            `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors
-            ${isActive
-              ? 'bg-blue-50 text-blue-700'
-              : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-            }`
-          }
-        >
-          <Settings size={18} />
-          Settings
-        </NavLink>
+        <NavRow to="/settings" Icon={Settings} label="Settings" />
       </div>
 
-      {/* User */}
-      <div className="px-3 py-4 border-t border-gray-200 mt-2">
+      <div className="px-3 py-4 border-t border-gray-100/80 mt-2">
         <div className="flex items-center gap-3 px-3 py-2 mb-1">
-          <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
-            <span className="text-sm font-semibold text-blue-700">
+          <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0" style={{ background: 'rgba(var(--accent-rgb), 0.12)' }}>
+            <span className="text-sm font-semibold" style={{ color: 'var(--accent)' }}>
               {userName.charAt(0).toUpperCase()}
             </span>
           </div>
@@ -143,9 +182,9 @@ export function Sidebar({ onSignOut, userName }: SidebarProps) {
         </div>
         <button
           onClick={onSignOut}
-          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100 w-full transition-colors"
+          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-red-600 w-full transition-colors"
         >
-          <LogOut size={18} />
+          <LogOut size={18} className="text-gray-400" />
           Sign Out
         </button>
       </div>

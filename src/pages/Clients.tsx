@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Edit2, Trash2, Search } from 'lucide-react';
+import { Plus, Edit2, Trash2, Search, Users, ShieldCheck, Building2, UserPlus } from 'lucide-react';
 import { useClients } from '../hooks/useClients';
 import type { Client } from '../types';
 import { INDIAN_STATES } from '../types';
@@ -9,6 +9,27 @@ import { Input } from '../components/ui/Input';
 import { Card } from '../components/ui/Card';
 import { Modal } from '../components/ui/Modal';
 import { formatDate } from '../utils/formatters';
+
+// Initials + deterministic neutral tint for client avatars (green/red reserved
+// for financial meaning, so avatars stay slate/blue/amber).
+function initials(name: string) {
+  const parts = name.trim().split(/\s+/);
+  return ((parts[0]?.[0] ?? '') + (parts[1]?.[0] ?? '')).toUpperCase() || '?';
+}
+
+const AVATAR_TINTS = [
+  { bg: '#f1f5f9', fg: '#334155' },
+  { bg: '#eff6ff', fg: '#2563eb' },
+  { bg: '#eef2ff', fg: '#4f46e5' },
+  { bg: '#f0f9ff', fg: '#0284c7' },
+  { bg: '#fffbeb', fg: '#d97706' },
+];
+
+function tintFor(name: string) {
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
+  return AVATAR_TINTS[h % AVATAR_TINTS.length];
+}
 
 const emptyForm = {
   name: '',
@@ -25,6 +46,10 @@ export function Clients() {
   const { clients, loading, createClient, updateClient, deleteClient } = useClients(
     search || undefined
   );
+
+  const total = clients.length;
+  const gstCount = clients.filter((c) => c.gstin).length;
+  const nonGst = total - gstCount;
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Client | null>(null);
   const [form, setForm] = useState(emptyForm);
@@ -94,14 +119,46 @@ export function Clients() {
         }
       />
 
-      <div className="px-4 md:px-6 py-6 space-y-4">
+      <div className="px-4 md:px-6 py-6 space-y-5">
+        {/* Top metrics */}
+        <div className="grid grid-cols-3 gap-4">
+          <div className="card-surface hover-lift p-4 flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'rgba(var(--accent-rgb),0.07)' }}>
+              <Users size={18} style={{ color: 'var(--accent)' }} />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Total Clients</p>
+              <p className="text-2xl font-extrabold text-gray-900" style={{ fontFamily: '"Nunito", ui-rounded, sans-serif', letterSpacing: '-0.02em' }}>{total}</p>
+            </div>
+          </div>
+          <div className="card-surface hover-lift p-4 flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
+              <ShieldCheck size={18} className="text-blue-600" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">GST-Registered</p>
+              <p className="text-2xl font-extrabold text-gray-900" style={{ fontFamily: '"Nunito", ui-rounded, sans-serif', letterSpacing: '-0.02em' }}>{gstCount}</p>
+            </div>
+          </div>
+          <div className="card-surface hover-lift p-4 flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center shrink-0">
+              <Building2 size={18} className="text-gray-500" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Non-GST (B2C)</p>
+              <p className="text-2xl font-extrabold text-gray-900" style={{ fontFamily: '"Nunito", ui-rounded, sans-serif', letterSpacing: '-0.02em' }}>{nonGst}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Search */}
         <div className="relative max-w-xs">
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search by name..."
-            className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-slate-300"
           />
         </div>
 
@@ -109,23 +166,23 @@ export function Clients() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-gray-200 bg-gray-50">
-                  {['Name', 'GSTIN', 'State', 'Email', 'Phone', 'Added', 'Actions'].map((h) => (
+                <tr className="border-b border-gray-100 bg-gray-50/60">
+                  {['Client', 'GSTIN', 'State', 'Email', 'Phone', 'Added', ''].map((h, i) => (
                     <th
-                      key={h}
-                      className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase"
+                      key={i}
+                      className="px-5 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide"
                     >
                       {h}
                     </th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody className="divide-y divide-gray-50">
                 {loading ? (
                   Array.from({ length: 5 }).map((_, i) => (
                     <tr key={i}>
                       {Array.from({ length: 7 }).map((_, j) => (
-                        <td key={j} className="px-4 py-3">
+                        <td key={j} className="px-5 py-4">
                           <div className="h-4 bg-gray-200 rounded animate-pulse" />
                         </td>
                       ))}
@@ -133,44 +190,80 @@ export function Clients() {
                   ))
                 ) : clients.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="px-4 py-12 text-center text-gray-400">
-                      No clients found
+                    <td colSpan={7} className="px-5 py-16 text-center">
+                      {search ? (
+                        <p className="text-sm text-gray-400">No clients match “{search}”.</p>
+                      ) : (
+                        <div className="flex flex-col items-center gap-3">
+                          <div className="w-12 h-12 rounded-2xl bg-gray-50 flex items-center justify-center">
+                            <Users size={22} className="text-gray-300" />
+                          </div>
+                          <div>
+                            <p className="text-gray-700 font-semibold">No clients yet</p>
+                            <p className="text-sm text-gray-400 mt-0.5">Add your first client to start invoicing.</p>
+                          </div>
+                          <button
+                            onClick={openCreate}
+                            className="mt-1 inline-flex items-center gap-2 px-4 py-2 text-white rounded-lg text-sm font-medium transition-opacity hover:opacity-90"
+                            style={{ background: 'var(--accent)' }}
+                          >
+                            <Plus size={14} /> Add Client
+                          </button>
+                        </div>
+                      )}
                     </td>
                   </tr>
                 ) : (
-                  clients.map((c) => (
-                    <tr key={c.id} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 font-semibold text-gray-900">{c.name}</td>
-                      <td className="px-4 py-3 font-mono text-xs text-gray-600">
-                        {c.gstin || '—'}
-                      </td>
-                      <td className="px-4 py-3 text-gray-600">{c.state || '—'}</td>
-                      <td className="px-4 py-3 text-gray-500">{c.email || '—'}</td>
-                      <td className="px-4 py-3 text-gray-500">{c.phone || '—'}</td>
-                      <td className="px-4 py-3 text-gray-400">{formatDate(c.created_at)}</td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-1">
-                          <button
-                            onClick={() => openEdit(c)}
-                            className="p-1.5 rounded hover:bg-gray-100 text-gray-500"
-                            title="Edit"
-                          >
-                            <Edit2 size={14} />
-                          </button>
-                          <button
-                            onClick={() => {
-                              setDeleteError('');
-                              setConfirmDelete(c.id);
-                            }}
-                            className="p-1.5 rounded hover:bg-red-100 text-red-400"
-                            title="Delete"
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
+                  clients.map((c) => {
+                    const tint = tintFor(c.name);
+                    return (
+                      <tr key={c.id} className="group hover:bg-gray-50 transition-colors">
+                        <td className="px-5 py-4">
+                          <div className="flex items-center gap-3">
+                            <div
+                              className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
+                              style={{ background: tint.bg, color: tint.fg }}
+                            >
+                              {initials(c.name)}
+                            </div>
+                            <span className="font-semibold text-gray-900">{c.name}</span>
+                          </div>
+                        </td>
+                        <td className="px-5 py-4">
+                          {c.gstin ? (
+                            <span className="font-mono text-xs text-gray-600">{c.gstin}</span>
+                          ) : (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-gray-100 text-gray-500">B2C</span>
+                          )}
+                        </td>
+                        <td className="px-5 py-4 text-gray-600">{c.state || '—'}</td>
+                        <td className="px-5 py-4 text-gray-500">{c.email || '—'}</td>
+                        <td className="px-5 py-4 text-gray-500">{c.phone || '—'}</td>
+                        <td className="px-5 py-4 text-gray-400">{formatDate(c.created_at)}</td>
+                        <td className="px-5 py-4">
+                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+                            <button
+                              onClick={() => openEdit(c)}
+                              className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500"
+                              title="Edit"
+                            >
+                              <Edit2 size={14} />
+                            </button>
+                            <button
+                              onClick={() => {
+                                setDeleteError('');
+                                setConfirmDelete(c.id);
+                              }}
+                              className="p-1.5 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500"
+                              title="Delete"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>
@@ -183,6 +276,7 @@ export function Clients() {
         isOpen={showForm}
         onClose={() => setShowForm(false)}
         title={editing ? 'Edit Client' : 'New Client'}
+        icon={<UserPlus size={18} />}
       >
         <form onSubmit={handleSubmit} className="space-y-4">
           <Input

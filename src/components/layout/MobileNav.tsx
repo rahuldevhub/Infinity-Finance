@@ -1,123 +1,120 @@
 import { useState, useEffect } from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import {
-  LayoutDashboard, FileText, Receipt, Wallet,
-  Menu, X, ClipboardList, Users, BarChart2,
-  FileCog, Settings, FileCheck, BadgeCheck
+  LayoutDashboard, FileText, Wallet, BarChart2, Settings, Plus,
+  ClipboardList, BadgeCheck, Receipt, Users,
 } from 'lucide-react';
+import { BottomSheet } from '../ui/BottomSheet';
 
-const primaryTabs = [
-  { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/invoices', icon: FileText, label: 'Invoices' },
-  { to: '/expenses', icon: Receipt, label: 'Expenses' },
-  { to: '/cash-flow', icon: Wallet, label: 'Cash Flow' },
-];
+type SectionId = 'sales' | 'finance' | 'gst';
 
-const drawerLinks = [
-  { to: '/quotations', icon: ClipboardList, label: 'Quotations' },
-  { to: '/proforma', icon: FileCheck, label: 'Proforma' },
-  { to: '/receipts', icon: BadgeCheck, label: 'Receipts' },
-  { to: '/clients', icon: Users, label: 'Clients' },
-  { to: '/gst-summary', icon: BarChart2, label: 'GST Summary' },
-  { to: '/gst-filing', icon: FileCog, label: 'GST Filing' },
+const SECTION_ROUTES: Record<SectionId, string[]> = {
+  sales: ['/clients', '/quotations', '/proforma', '/invoices', '/receipts'],
+  finance: ['/expenses', '/cash-flow'],
+  gst: ['/gst-summary', '/gst-filing'],
+};
+
+interface Tab {
+  to: string;
+  icon: React.ElementType;
+  label: string;
+  section?: SectionId;
+}
+
+const TABS: Tab[] = [
+  { to: '/', icon: LayoutDashboard, label: 'Home' },
+  { to: '/sales', icon: FileText, label: 'Sales', section: 'sales' },
+  { to: '/finance', icon: Wallet, label: 'Finance', section: 'finance' },
+  { to: '/gst', icon: BarChart2, label: 'GST', section: 'gst' },
   { to: '/settings', icon: Settings, label: 'Settings' },
 ];
 
+const CREATE_ITEMS = [
+  { to: '/invoices/new', icon: FileText, label: 'Invoice' },
+  { to: '/quotations/new', icon: ClipboardList, label: 'Quotation' },
+  { to: '/receipts/new', icon: BadgeCheck, label: 'Receipt' },
+  { to: '/expenses', icon: Receipt, label: 'Expense' },
+  { to: '/clients', icon: Users, label: 'Client' },
+  { to: '/cash-flow', icon: Wallet, label: 'Transaction' },
+];
+
+function isTabActive(tab: Tab, path: string): boolean {
+  if (tab.to === '/') return path === '/';
+  if (tab.section) return path === tab.to || SECTION_ROUTES[tab.section].some((r) => path.startsWith(r));
+  return path.startsWith(tab.to);
+}
+
 export function MobileNav() {
-  const [drawerOpen, setDrawerOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
+  const [createOpen, setCreateOpen] = useState(false);
+  const path = location.pathname;
 
-  // Close drawer on navigation
-  useEffect(() => {
-    setDrawerOpen(false);
-  }, [location.pathname]);
-
-  const isDrawerRouteActive = drawerLinks.some((l) => location.pathname === l.to);
+  // Close the create sheet whenever the route changes.
+  useEffect(() => { setCreateOpen(false); }, [path]);
 
   return (
     <>
-      {/* Backdrop */}
-      {drawerOpen && (
-        <div
-          className="md:hidden fixed inset-0 bg-black/40 z-40"
-          onClick={() => setDrawerOpen(false)}
-        />
-      )}
-
-      {/* More drawer — slides up from above the tab bar */}
-      <div
-        className={`md:hidden fixed left-0 right-0 bg-white border-t border-gray-200 z-50 transition-transform duration-200 ease-out ${
-          drawerOpen ? 'translate-y-0' : 'translate-y-full'
-        }`}
-        style={{ bottom: 64 }}
+      {/* Create FAB */}
+      <button
+        onClick={() => setCreateOpen(true)}
+        className="lg:hidden fixed right-4 bottom-20 z-50 w-14 h-14 rounded-full text-white flex items-center justify-center shadow-lg shadow-slate-900/30 active:scale-95 transition-transform"
+        style={{ background: 'var(--accent)' }}
+        aria-label="Create"
       >
-        <div className="px-4 pt-4 pb-3">
-          <div className="flex items-center justify-between mb-3">
-            <p
-              className="text-gray-400 font-medium uppercase"
-              style={{ fontSize: 10, letterSpacing: '0.08em' }}
-            >
-              More
-            </p>
-            <button
-              onClick={() => setDrawerOpen(false)}
-              className="p-1 rounded-lg hover:bg-gray-100 text-gray-400"
-            >
-              <X size={16} />
-            </button>
-          </div>
-          <div className="grid grid-cols-3 gap-2">
-            {drawerLinks.map(({ to, icon: Icon, label }) => (
-              <NavLink
-                key={to}
-                to={to}
-                className={({ isActive }) =>
-                  `flex flex-col items-center gap-1.5 px-2 py-3 rounded-xl text-center transition-colors ${
-                    isActive
-                      ? 'bg-blue-50 text-blue-700'
-                      : 'text-gray-600 hover:bg-gray-100'
-                  }`
-                }
-              >
-                <Icon size={20} />
-                <span className="text-xs font-medium leading-tight">{label}</span>
-              </NavLink>
-            ))}
-          </div>
-        </div>
-      </div>
+        <Plus size={26} />
+      </button>
 
       {/* Bottom tab bar */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50 safe-bottom">
-        <div className="flex items-center justify-around px-1 py-1">
-          {primaryTabs.map(({ to, icon: Icon, label }) => (
-            <NavLink
-              key={to}
-              to={to}
-              end={to === '/'}
-              className={({ isActive }) =>
-                `flex flex-col items-center gap-0.5 px-3 py-2 rounded-xl transition-colors flex-1 ${
-                  isActive ? 'text-blue-600' : 'text-gray-500'
-                }`
-              }
-            >
-              <Icon size={22} />
-              <span className="text-xs font-medium">{label}</span>
-            </NavLink>
-          ))}
-
-          {/* More button */}
-          <button
-            onClick={() => setDrawerOpen((v) => !v)}
-            className={`flex flex-col items-center gap-0.5 px-3 py-2 rounded-xl transition-colors flex-1 ${
-              drawerOpen || isDrawerRouteActive ? 'text-blue-600' : 'text-gray-500'
-            }`}
-          >
-            <Menu size={22} />
-            <span className="text-xs font-medium">More</span>
-          </button>
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur border-t border-gray-100 z-50 safe-bottom">
+        <div className="flex items-stretch">
+          {TABS.map((tab) => {
+            const active = isTabActive(tab, path);
+            const Icon = tab.icon;
+            return (
+              <Link
+                key={tab.to}
+                to={tab.to}
+                className="relative flex-1 flex flex-col items-center gap-0.5 py-2.5"
+                style={{ color: active ? 'var(--accent)' : '#94a3b8' }}
+              >
+                {active && (
+                  <motion.span
+                    layoutId="mobile-tab"
+                    className="absolute top-0 h-0.5 w-8 rounded-full"
+                    style={{ background: 'var(--accent)' }}
+                    transition={{ type: 'spring', stiffness: 500, damping: 40 }}
+                  />
+                )}
+                <Icon size={21} strokeWidth={active ? 2.4 : 2} />
+                <span className="text-[10px] font-semibold">{tab.label}</span>
+              </Link>
+            );
+          })}
         </div>
       </nav>
+
+      {/* Create bottom sheet */}
+      <BottomSheet open={createOpen} onClose={() => setCreateOpen(false)} title="Create">
+        <div className="grid grid-cols-3 gap-3">
+          {CREATE_ITEMS.map(({ to, icon: Icon, label }) => (
+            <button
+              key={label}
+              onClick={() => { setCreateOpen(false); navigate(to); }}
+              className="flex flex-col items-center gap-2 rounded-2xl p-3 bg-gray-50 active:bg-gray-100 transition-colors"
+            >
+              <span
+                className="w-11 h-11 rounded-full flex items-center justify-center"
+                style={{ background: 'rgba(var(--accent-rgb),0.10)', color: 'var(--accent)' }}
+              >
+                <Icon size={20} />
+              </span>
+              <span className="text-xs font-semibold text-gray-700">{label}</span>
+            </button>
+          ))}
+        </div>
+      </BottomSheet>
     </>
   );
 }

@@ -3,9 +3,35 @@ import { supabase } from '../lib/supabase';
 import type { DashboardStats, MonthlyData } from '../types';
 import { getMonthRange } from '../utils/formatters';
 
+export interface DashboardTrends {
+  revenue: number[];
+  sales: number[];
+  gst: number[];
+  expenses: number[];
+  revenueDelta: number | null;
+  salesDelta: number | null;
+  gstDelta: number | null;
+  expensesDelta: number | null;
+}
+
+const EMPTY_TRENDS: DashboardTrends = {
+  revenue: [], sales: [], gst: [], expenses: [],
+  revenueDelta: null, salesDelta: null, gstDelta: null, expensesDelta: null,
+};
+
+// Percentage change of the last point vs the previous one; null when not computable.
+function pctDelta(series: number[]): number | null {
+  if (series.length < 2) return null;
+  const prev = series[series.length - 2];
+  const cur = series[series.length - 1];
+  if (!prev) return null;
+  return ((cur - prev) / prev) * 100;
+}
+
 export function useDashboard(year: number, month: number) {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [monthlyData, setMonthlyData] = useState<MonthlyData[]>([]);
+  const [trends, setTrends] = useState<DashboardTrends>(EMPTY_TRENDS);
   const [recentInvoices, setRecentInvoices] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -89,8 +115,13 @@ export function useDashboard(year: number, month: number) {
         .limit(5);
       setRecentInvoices(recent || []);
 
-      // Monthly data — GST-only sales for chart consistency
+      // Monthly data + trend series (last 6 months, oldest → newest)
       const monthly: MonthlyData[] = [];
+      const salesSeries: number[] = [];
+      const gstSeries: number[] = [];
+      const revenueSeries: number[] = [];
+      const expensesSeries: number[] = [];
+
       for (let i = 5; i >= 0; i--) {
         const d = new Date(year, month - i, 1);
         const y = d.getFullYear();
@@ -99,10 +130,9 @@ export function useDashboard(year: number, month: number) {
 
         const { data: mInv } = await supabase
           .from('invoices')
-          .select('taxable_value')
+          .select('taxable_value, cgst_amount, sgst_amount, igst_amount, total_amount, invoice_type')
           .gte('invoice_date', mStart)
-          .lte('invoice_date', mEnd)
-          .or('invoice_type.eq.gst,invoice_type.is.null');
+          .lte('invoice_date', mEnd);
 
         const { data: mExp } = await supabase
           .from('expenses')
@@ -110,13 +140,35 @@ export function useDashboard(year: number, month: number) {
           .gte('date', mStart)
           .lte('date', mEnd);
 
+        const rows = mInv || [];
+        const gstRows = rows.filter((r) => r.invoice_type !== 'non_gst');
+        const mSales = gstRows.reduce((s, r) => s + Number(r.taxable_value), 0);
+        const mGst = gstRows.reduce((s, r) => s + Number(r.cgst_amount) + Number(r.sgst_amount) + Number(r.igst_amount), 0);
+        const mNonGst = rows.filter((r) => r.invoice_type === 'non_gst').reduce((s, r) => s + Number(r.total_amount), 0);
+        const mExpenses = (mExp || []).reduce((s, e) => s + Number(e.total_amount), 0);
+
+        salesSeries.push(mSales);
+        gstSeries.push(mGst);
+        revenueSeries.push(mSales + mNonGst);
+        expensesSeries.push(mExpenses);
+
         monthly.push({
           month: d.toLocaleDateString('en-IN', { month: 'short', year: '2-digit' }),
-          sales: (mInv || []).reduce((s, inv) => s + Number(inv.taxable_value), 0),
-          expenses: (mExp || []).reduce((s, exp) => s + Number(exp.total_amount), 0),
+          sales: mSales,
+          expenses: mExpenses,
         });
       }
       setMonthlyData(monthly);
+      setTrends({
+        revenue: revenueSeries,
+        sales: salesSeries,
+        gst: gstSeries,
+        expenses: expensesSeries,
+        revenueDelta: pctDelta(revenueSeries),
+        salesDelta: pctDelta(salesSeries),
+        gstDelta: pctDelta(gstSeries),
+        expensesDelta: pctDelta(expensesSeries),
+      });
     } catch (e) {
       console.error(e);
     } finally {
@@ -124,5 +176,5 @@ export function useDashboard(year: number, month: number) {
     }
   }
 
-  return { stats, monthlyData, recentInvoices, loading, refetch: fetchDashboardData };
+  return { stats, monthlyData, trends, recentInvoices, loading, refetch: fetchDashboardData };
 }

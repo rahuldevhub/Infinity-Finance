@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Download } from 'lucide-react';
+import { ArrowLeft, Download, Mail, CheckCircle, AlertCircle } from 'lucide-react';
 import { pdf } from '@react-pdf/renderer';
 import { useReceipts, generateReceiptNumber } from '../hooks/useReceipts';
 import type { PaymentMode } from '../hooks/useReceipts';
@@ -14,6 +14,7 @@ import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Card } from '../components/ui/Card';
 import { formatCurrency } from '../utils/formatters';
+import { sendReceiptEmail } from '../utils/sendReceiptEmail';
 import { supabase } from '../lib/supabase';
 
 // ── Constants ──────────────────────────────────────────────────────────────────
@@ -61,6 +62,11 @@ export function CreateReceipt() {
   const [useManualClient, setUseManualClient] = useState(false);
   const [clientNameOverride, setClientNameOverride] = useState('');
 
+  // ── Email ──
+  const [clientEmail, setClientEmail] = useState('');
+  const [sendEmail, setSendEmail] = useState(false);
+  const [emailStatus, setEmailStatus] = useState<{ sent: boolean; email: string; error?: string } | null>(null);
+
   // ── Linked ──
   const [linkedProformaId, setLinkedProformaId] = useState<string | null>(null);
   const [linkedInvoiceId, setLinkedInvoiceId] = useState<string | null>(null);
@@ -100,6 +106,7 @@ export function CreateReceipt() {
       if (data.client) {
         setSelectedClient(data.client);
         setUseManualClient(false);
+        if (data.client.email) setClientEmail(data.client.email);
       } else if (data.client_name_override) {
         setUseManualClient(true);
         setClientNameOverride(data.client_name_override || '');
@@ -130,6 +137,7 @@ export function CreateReceipt() {
       if (data.client) {
         setSelectedClient(data.client);
         setUseManualClient(false);
+        if (data.client.email) setClientEmail(data.client.email);
       } else if (data.client_name_override) {
         setUseManualClient(true);
         setClientNameOverride(data.client_name_override || '');
@@ -164,6 +172,7 @@ export function CreateReceipt() {
         setNotes(data.notes || DEFAULT_NOTES);
         setLinkedProformaId(data.proforma_id || null);
         setLinkedInvoiceId(data.invoice_id || null);
+        if (data.client_email) setClientEmail(data.client_email);
 
         if (data.client) {
           setSelectedClient(data.client);
@@ -181,6 +190,13 @@ export function CreateReceipt() {
 
     loadReceipt();
   }, [isEditing, params.id]);
+
+  // ── Client selection with email auto-fill ──────────────────────────────────
+
+  function handleClientSelect(c: any) {
+    setSelectedClient(c);
+    if (c?.email && !clientEmail) setClientEmail(c.email);
+  }
 
   // ── Submit ─────────────────────────────────────────────────────────────────
 
@@ -212,6 +228,7 @@ export function CreateReceipt() {
       invoice_id: linkedInvoiceId || null,
       notes: notes.trim() || null,
       created_by: user?.id || '',
+      client_email: clientEmail.trim() || null,
     };
 
     setSaving(true);
@@ -221,6 +238,13 @@ export function CreateReceipt() {
         navigate('/receipts');
       } else {
         const created = await createReceipt(payload);
+
+        if (sendEmail && clientEmail.trim()) {
+          const clientName = selectedClient?.name || clientNameOverride || 'Client';
+          const result = await sendReceiptEmail(created, clientEmail.trim(), clientName);
+          setEmailStatus({ sent: result.success, email: clientEmail.trim(), error: result.error });
+        }
+
         setSavedReceipt(created);
       }
     } catch (e: any) {
@@ -269,7 +293,24 @@ export function CreateReceipt() {
           </div>
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Receipt Created!</h2>
           <p className="text-gray-500 mb-2">{savedReceipt.receipt_number}</p>
-          <p className="text-gray-900 font-semibold text-xl mb-8">{formatCurrency(savedReceipt.amount_received)}</p>
+          <p className="text-gray-900 font-semibold text-xl mb-6">{formatCurrency(savedReceipt.amount_received)}</p>
+
+          {/* Email status badge */}
+          {emailStatus && (
+            <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm mb-6 border ${
+              emailStatus.sent
+                ? 'bg-green-50 text-green-700 border-green-200'
+                : 'bg-red-50 text-red-700 border-red-200'
+            }`}>
+              {emailStatus.sent
+                ? <CheckCircle size={15} />
+                : <AlertCircle size={15} />}
+              {emailStatus.sent
+                ? `Receipt emailed to ${emailStatus.email}`
+                : `Email failed: ${emailStatus.error}`}
+            </div>
+          )}
+
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Button onClick={handleDownloadPDF} disabled={downloading} variant="secondary">
               <Download size={16} className="mr-2" />
@@ -374,10 +415,42 @@ export function CreateReceipt() {
             <ClientSelector
               clients={clients}
               selected={selectedClient}
-              onSelect={c => setSelectedClient(c)}
-              onClear={() => setSelectedClient(null)}
+              onSelect={handleClientSelect}
+              onClear={() => { setSelectedClient(null); setClientEmail(''); }}
               onCreateClient={createClient}
             />
+          )}
+
+          {/* Email field */}
+          <div className="mt-4">
+            <label className="block text-xs font-medium text-gray-600 mb-1">
+              <span className="flex items-center gap-1.5">
+                <Mail size={12} className="text-gray-400" />
+                Client Email <span className="text-gray-400 font-normal">(for receipt delivery)</span>
+              </span>
+            </label>
+            <input
+              type="email"
+              value={clientEmail}
+              onChange={e => setClientEmail(e.target.value)}
+              placeholder="client@example.com"
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+
+          {/* Send email checkbox — only show if email is entered and not editing */}
+          {clientEmail.trim() && !isEditing && (
+            <label className="flex items-center gap-2.5 mt-3 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={sendEmail}
+                onChange={e => setSendEmail(e.target.checked)}
+                className="w-4 h-4 rounded accent-blue-600"
+              />
+              <span className="text-sm text-gray-700">
+                Send receipt to client by email after saving
+              </span>
+            </label>
           )}
         </Card>
 
@@ -473,7 +546,9 @@ export function CreateReceipt() {
             Cancel
           </Button>
           <Button onClick={handleSave} disabled={saving}>
-            {saving ? 'Saving…' : isEditing ? 'Update Receipt' : 'Create Receipt'}
+            {saving
+              ? (sendEmail && clientEmail.trim() ? 'Saving & Sending…' : 'Saving…')
+              : isEditing ? 'Update Receipt' : 'Create Receipt'}
           </Button>
         </div>
 

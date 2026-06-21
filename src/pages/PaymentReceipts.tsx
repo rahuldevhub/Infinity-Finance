@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Download, Edit, Trash2 } from 'lucide-react';
+import { Plus, Download, Edit, Trash2, Mail, Loader2 } from 'lucide-react';
 import { usePDFDownload } from '../hooks/usePDFDownload';
 import { useReceipts } from '../hooks/useReceipts';
 import type { PaymentReceipt } from '../hooks/useReceipts';
@@ -10,6 +10,7 @@ import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { Modal } from '../components/ui/Modal';
 import { formatCurrency, formatDate, getMonthRange } from '../utils/formatters';
+import { sendReceiptEmail } from '../utils/sendReceiptEmail';
 
 export function PaymentReceipts() {
   const navigate = useNavigate();
@@ -21,9 +22,11 @@ export function PaymentReceipts() {
   const [filterBrand, setFilterBrand] = useState('');
 
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [sendingEmailId, setSendingEmailId] = useState<string | null>(null);
+  const [emailMessage, setEmailMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const { start, end } = getMonthRange(filterYear, filterMonth);
-  const { receipts, loading, deleteReceipt } = useReceipts({
+  const { receipts, loading, deleteReceipt, refetch } = useReceipts({
     start,
     end,
     sub_brand: filterBrand || undefined,
@@ -59,6 +62,44 @@ export function PaymentReceipts() {
     setConfirmDelete(null);
   }
 
+  async function handleSendEmail(receipt: PaymentReceipt) {
+    if (receipt.email_sent) return;
+
+    let toEmail = receipt.client_email || '';
+
+    if (!toEmail) {
+      const inputEmail = window.prompt(
+        `Enter email address for ${receipt.client?.name || receipt.client_name_override || 'client'}:`
+      );
+      if (!inputEmail?.trim()) return;
+      toEmail = inputEmail.trim();
+    }
+
+    const confirmed = window.confirm(
+      `Send receipt ${receipt.receipt_number} to ${toEmail}?`
+    );
+    if (!confirmed) return;
+
+    setSendingEmailId(receipt.id);
+    setEmailMessage(null);
+
+    const clientName = receipt.client?.name || receipt.client_name_override || 'Client';
+    const result = await sendReceiptEmail(
+      { ...receipt, client_email: toEmail },
+      toEmail,
+      clientName
+    );
+
+    setSendingEmailId(null);
+
+    if (result.success) {
+      setEmailMessage({ type: 'success', text: `Receipt sent to ${toEmail}` });
+      await refetch();
+    } else {
+      setEmailMessage({ type: 'error', text: `Failed to send: ${result.error}` });
+    }
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       <TopBar title="Payment Receipts" />
@@ -72,6 +113,18 @@ export function PaymentReceipts() {
             <Plus size={16} className="mr-2" /> New Receipt
           </Button>
         </div>
+
+        {/* Email message banner */}
+        {emailMessage && (
+          <div className={`px-4 py-3 rounded-lg text-sm flex items-center justify-between ${
+            emailMessage.type === 'success'
+              ? 'bg-green-50 text-green-700 border border-green-200'
+              : 'bg-red-50 text-red-700 border border-red-200'
+          }`}>
+            <span>{emailMessage.text}</span>
+            <button onClick={() => setEmailMessage(null)} className="ml-4 text-current opacity-60 hover:opacity-100">✕</button>
+          </div>
+        )}
 
         {/* Filters */}
         <Card>
@@ -162,6 +215,7 @@ export function PaymentReceipts() {
                 <tbody className="divide-y divide-gray-100">
                   {receipts.map(receipt => {
                     const clientName = receipt.client?.name || receipt.client_name_override || '—';
+                    const isSending = sendingEmailId === receipt.id;
                     return (
                       <tr key={receipt.id} className="hover:bg-gray-50 transition-colors">
                         <td className="py-3 pr-4 font-mono text-xs text-blue-700 font-medium">
@@ -195,6 +249,27 @@ export function PaymentReceipts() {
                         </td>
                         <td className="py-3">
                           <div className="flex items-center justify-end gap-1">
+                            {/* Email send button */}
+                            <button
+                              onClick={() => handleSendEmail(receipt)}
+                              disabled={receipt.email_sent || isSending}
+                              title={
+                                receipt.email_sent
+                                  ? `Already sent to ${receipt.client_email}`
+                                  : 'Send receipt by email'
+                              }
+                              className={`p-1.5 rounded hover:bg-blue-50 disabled:cursor-not-allowed transition-colors ${
+                                receipt.email_sent
+                                  ? 'text-green-400'
+                                  : isSending
+                                  ? 'text-blue-400'
+                                  : 'text-gray-400 hover:text-blue-600'
+                              }`}
+                            >
+                              {isSending
+                                ? <Loader2 size={15} className="animate-spin" />
+                                : <Mail size={15} />}
+                            </button>
                             <button
                               onClick={() => handleDownloadPDF(receipt)}
                               className="p-1.5 text-gray-400 hover:text-blue-600 rounded hover:bg-blue-50 disabled:opacity-50"

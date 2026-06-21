@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { WorkspaceProvider } from './context/WorkspaceContext';
 import { useAuth } from './hooks/useAuth';
 import { AppLayout } from './components/layout/AppLayout';
 import { Login } from './pages/Login';
@@ -17,6 +18,7 @@ import { ProformaInvoices } from './pages/ProformaInvoices';
 import { CreateProforma } from './pages/CreateProforma';
 import { PaymentReceipts } from './pages/PaymentReceipts';
 import { CreateReceipt } from './pages/CreateReceipt';
+import { SectionHub } from './pages/SectionHub';
 
 function LoadingScreen() {
   return (
@@ -54,6 +56,9 @@ function AppRoutes() {
         }
       >
         <Route path="/" element={<Dashboard />} />
+        <Route path="/sales" element={<SectionHub section="sales" />} />
+        <Route path="/finance" element={<SectionHub section="finance" />} />
+        <Route path="/gst" element={<SectionHub section="gst" />} />
         <Route path="/invoices" element={<Invoices />} />
         <Route path="/invoices/new" element={<CreateInvoice />} />
         <Route path="/invoices/:id/edit" element={<CreateInvoice />} />
@@ -80,8 +85,10 @@ function AppRoutes() {
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <AppRoutes />
-    </BrowserRouter>
+    <WorkspaceProvider>
+      <BrowserRouter>
+        <AppRoutes />
+      </BrowserRouter>
+    </WorkspaceProvider>
   );
 }

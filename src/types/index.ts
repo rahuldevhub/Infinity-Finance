@@ -156,6 +156,9 @@ export interface PaymentReceipt {
   proforma_id?: string | null;
   quotation_id?: string | null;
   notes?: string | null;
+  client_email?: string | null;
+  email_sent?: boolean;
+  email_sent_at?: string | null;
   created_at: string;
   created_by?: string;
   client?: { name: string; email?: string | null; address?: string } | null;

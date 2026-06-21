@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import {
   ChevronLeft, ChevronRight, Plus, Trash2, Pencil, Download, X,
-  TrendingUp, TrendingDown, Wallet, Banknote, CreditCard, Scale,
+  TrendingUp, TrendingDown, Wallet, Banknote, CreditCard, Scale, PiggyBank,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -15,11 +15,13 @@ import {
 import { useCashFlow } from '../hooks/useCashFlow';
 import type { CashTransaction } from '../hooks/useCashFlow';
 import { useAuth } from '../hooks/useAuth';
+import { useWorkspace } from '../context/WorkspaceContext';
 import { TopBar } from '../components/layout/TopBar';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Badge } from '../components/ui/Badge';
 import { Card, CardTitle } from '../components/ui/Card';
+import { CompactMetric } from '../components/dashboard/DashboardCards';
 import { Modal } from '../components/ui/Modal';
 import { formatCurrency, formatDate, getMonthRange, getMonthLabel } from '../utils/formatters';
 
@@ -71,7 +73,7 @@ function paymentModeBadge(mode: CashTransaction['payment_mode']) {
     case 'upi':
       return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-700">UPI</span>;
     case 'card':
-      return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-700">CARD</span>;
+      return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-200 text-slate-700">CARD</span>;
     case 'razorpay':
       return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-teal-100 text-teal-700">RAZORPAY</span>;
   }
@@ -126,6 +128,8 @@ function defaultForm() {
 
 export function CashFlow() {
   const { user } = useAuth();
+  const { workspace } = useWorkspace();
+  const accent = workspace.accent;
 
   const today = new Date();
   const [year, setYear] = useState(today.getFullYear());
@@ -180,6 +184,7 @@ export function CashFlow() {
   const totalIn = transactions.filter((t) => t.type === 'in').reduce((s, t) => s + t.amount, 0);
   const totalOut = transactions.filter((t) => t.type === 'out').reduce((s, t) => s + t.amount, 0);
   const netBalance = openingBalance + totalIn - totalOut;
+  const netProfit = totalIn - totalOut;
   const totalCash = transactions.filter((t) => t.payment_mode === 'cash').reduce((s, t) => s + t.amount, 0);
   const totalDigital = transactions
     .filter((t) => ['bank', 'upi', 'card', 'razorpay'].includes(t.payment_mode))
@@ -340,7 +345,8 @@ export function CashFlow() {
         actions={
           <button
             onClick={openAddForm}
-            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white rounded-xl bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 shadow-lg shadow-blue-500/25 transition-all"
+            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white rounded-xl shadow-sm transition-opacity hover:opacity-90"
+            style={{ background: accent }}
           >
             <Plus size={16} /> Add Transaction
           </button>
@@ -349,171 +355,120 @@ export function CashFlow() {
 
       <div className="px-4 md:px-6 py-6 space-y-6">
 
-        {/* Month Selector — pill style */}
-        <div className="flex items-center gap-2">
-          <button
-            onClick={prevMonth}
-            className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-600 transition-colors border border-gray-200"
-          >
-            <ChevronLeft size={18} />
+        {/* Month Selector */}
+        <div className="flex items-center gap-2 bg-white border border-gray-100 rounded-xl px-3 py-2 shadow-sm w-fit">
+          <button onClick={prevMonth} className="text-gray-400 hover:text-gray-700 transition-colors">
+            <ChevronLeft size={16} />
           </button>
-          <div className="bg-gray-900 text-white rounded-full px-6 py-2 text-sm font-semibold min-w-[160px] text-center select-none">
+          <span className="text-sm font-semibold text-gray-800 min-w-[130px] text-center select-none">
             {getMonthLabel(year, month)}
-          </div>
+          </span>
           <button
             onClick={nextMonth}
             disabled={isCurrentMonth}
-            className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-600 transition-colors border border-gray-200 disabled:opacity-40 disabled:cursor-not-allowed"
+            className="text-gray-400 hover:text-gray-700 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
           >
-            <ChevronRight size={18} />
+            <ChevronRight size={16} />
           </button>
         </div>
 
-        {/* Summary Cards — gradient style */}
+        {/* ── Overview: hero chart + compact metric rail ── */}
         {loading ? (
-          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="h-28 bg-gray-200 rounded-xl animate-pulse" />
-            ))}
+          <div className="grid grid-cols-1 lg:grid-cols-[1.8fr_1fr] gap-5">
+            <div className="h-[360px] card-surface animate-pulse" />
+            <div className="flex flex-col gap-4">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="h-[78px] card-surface animate-pulse" />
+              ))}
+            </div>
           </div>
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
+          <div className="grid grid-cols-1 lg:grid-cols-[1.8fr_1fr] gap-5">
 
-            {/* Opening Balance */}
-            <div
-              style={{ background: 'linear-gradient(135deg, #faf5ff, #f3e8ff)', border: '1px solid #d8b4fe' }}
-              className="rounded-xl p-4 flex flex-col gap-2"
-            >
-              <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-full bg-purple-100 flex items-center justify-center shrink-0">
-                  <Scale size={13} className="text-purple-600" />
+            {/* Hero — Net Balance + daily chart */}
+            <div className="card-surface p-6 flex flex-col">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 flex items-center gap-1.5">
+                    <Wallet size={13} style={{ color: netBalance >= 0 ? '#16a34a' : '#dc2626' }} /> Net Balance
+                  </p>
+                  <div className="flex items-end gap-3 mt-1.5">
+                    <span
+                      className="text-3xl font-extrabold"
+                      style={{ fontFamily: '"Nunito", ui-rounded, sans-serif', letterSpacing: '-0.03em', color: netBalance >= 0 ? '#16a34a' : '#b91c1c' }}
+                    >
+                      {netBalance < 0 && '−'}{formatCurrency(Math.abs(netBalance))}
+                    </span>
+                    <span
+                      className="mb-1 inline-flex items-center text-xs font-bold px-2 py-0.5 rounded-full"
+                      style={netBalance >= 0
+                        ? { background: '#dcfce7', color: '#16a34a' }
+                        : { background: '#fef2f2', color: '#b91c1c' }}
+                    >
+                      {netBalance >= 0 ? 'SURPLUS' : 'DEFICIT'}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3 text-xs text-gray-400 mt-2.5 flex-wrap">
+                    <span className="inline-flex items-center gap-1"><Scale size={12} /> Opening {openingBalance < 0 && '−'}{formatCurrency(Math.abs(openingBalance))}</span>
+                    <span>In <span className="font-semibold text-green-600">{formatCurrency(totalIn)}</span></span>
+                    <span>Out <span className="font-semibold text-red-600">{formatCurrency(totalOut)}</span></span>
+                  </div>
                 </div>
-                <span className="text-xs font-medium text-gray-500">Opening Balance</span>
+                <div className="text-right shrink-0">
+                  <p className="text-[11px] font-semibold text-gray-500">Daily Cash Flow</p>
+                  <div className="flex items-center gap-3 text-xs text-gray-400 mt-1 justify-end">
+                    <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-green-500 inline-block" />In</span>
+                    <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-red-400 inline-block" />Out</span>
+                  </div>
+                </div>
               </div>
-              <p className={`text-2xl font-bold ${openingBalance > 0 ? 'text-purple-700' : openingBalance < 0 ? 'text-red-700' : 'text-gray-400'}`}>
-                {openingBalance < 0 && '−'}{formatCurrency(Math.abs(openingBalance))}
-              </p>
-              <p className="text-xs text-gray-400 leading-tight">Carried from previous months</p>
+
+              <div className="mt-5 flex-1 min-h-[240px]">
+                {chartData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={240}>
+                    <BarChart data={chartData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+                      <defs>
+                        <linearGradient id="gradIn" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#22c55e" />
+                          <stop offset="100%" stopColor="#16a34a" />
+                        </linearGradient>
+                        <linearGradient id="gradOut" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#f87171" />
+                          <stop offset="100%" stopColor="#dc2626" />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} />
+                      <XAxis dataKey="day" tick={{ fontSize: 11, fill: '#9ca3af' }} tickLine={false} axisLine={false} />
+                      <YAxis tick={{ fontSize: 11, fill: '#9ca3af' }} tickLine={false} axisLine={false} tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`} width={48} />
+                      <Tooltip content={<ChartTooltip />} cursor={{ fill: '#f9fafb' }} />
+                      <Bar dataKey="In" fill="url(#gradIn)" radius={[4, 4, 0, 0]} maxBarSize={24} />
+                      <Bar dataKey="Out" fill="url(#gradOut)" radius={[4, 4, 0, 0]} maxBarSize={24} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="flex items-center justify-center h-[240px]">
+                    <p className="text-sm text-gray-400">No transactions in {getMonthLabel(year, month)}</p>
+                  </div>
+                )}
+              </div>
             </div>
 
-            {/* Money In */}
-            <div
-              style={{ background: 'linear-gradient(135deg, #f0fdf4, #dcfce7)', border: '1px solid #86efac' }}
-              className="rounded-xl p-4 flex flex-col gap-2"
-            >
-              <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-full bg-green-100 flex items-center justify-center shrink-0">
-                  <TrendingUp size={13} className="text-green-600" />
-                </div>
-                <span className="text-xs font-medium text-gray-500">Money In</span>
-              </div>
-              <p className="text-2xl font-bold text-green-700">{formatCurrency(totalIn)}</p>
-              <p className="text-xs text-gray-400">This month</p>
+            {/* Compact metric rail */}
+            <div className="flex flex-col gap-4">
+              <CompactMetric Icon={TrendingUp} iconBg="#f0fdf4" iconColor="#16a34a" label="Money In" value={formatCurrency(totalIn)} valueColor="#16a34a" />
+              <CompactMetric Icon={TrendingDown} iconBg="#fef2f2" iconColor="#dc2626" label="Money Out" value={formatCurrency(totalOut)} valueColor="#dc2626" />
+              <CompactMetric
+                Icon={PiggyBank}
+                iconBg={netProfit >= 0 ? '#f0fdf4' : '#fef2f2'}
+                iconColor={netProfit >= 0 ? '#16a34a' : '#dc2626'}
+                label="Net Profit"
+                value={`${netProfit < 0 ? '−' : ''}${formatCurrency(Math.abs(netProfit))}`}
+                valueColor={netProfit >= 0 ? '#16a34a' : '#dc2626'}
+              />
+              <CompactMetric Icon={Banknote} iconBg="#fffbeb" iconColor="#d97706" label="Cash" value={formatCurrency(totalCash)} />
+              <CompactMetric Icon={CreditCard} iconBg="#f0f9ff" iconColor="#0ea5e9" label="Digital" value={formatCurrency(totalDigital)} />
             </div>
-
-            {/* Money Out */}
-            <div
-              style={{ background: 'linear-gradient(135deg, #fff5f5, #fee2e2)', border: '1px solid #fca5a5' }}
-              className="rounded-xl p-4 flex flex-col gap-2"
-            >
-              <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-full bg-red-100 flex items-center justify-center shrink-0">
-                  <TrendingDown size={13} className="text-red-600" />
-                </div>
-                <span className="text-xs font-medium text-gray-500">Money Out</span>
-              </div>
-              <p className="text-2xl font-bold text-red-700">{formatCurrency(totalOut)}</p>
-              <p className="text-xs text-gray-400">This month</p>
-            </div>
-
-            {/* Net Balance */}
-            <div
-              style={{ background: 'linear-gradient(135deg, #eff6ff, #dbeafe)', border: '1px solid #93c5fd' }}
-              className="rounded-xl p-4 flex flex-col gap-2"
-            >
-              <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
-                  <Wallet size={13} className={netBalance >= 0 ? 'text-blue-600' : 'text-red-600'} />
-                </div>
-                <span className="text-xs font-medium text-gray-500">Net Balance</span>
-              </div>
-              <p className={`text-2xl font-bold ${netBalance >= 0 ? 'text-blue-700' : 'text-red-700'}`}>
-                {netBalance < 0 && '−'}{formatCurrency(Math.abs(netBalance))}
-              </p>
-              <span className={`self-start inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${netBalance >= 0 ? 'bg-blue-100 text-blue-700' : 'bg-red-100 text-red-700'}`}>
-                {netBalance >= 0 ? 'SURPLUS' : 'DEFICIT'}
-              </span>
-            </div>
-
-            {/* Cash */}
-            <div
-              style={{ background: 'linear-gradient(135deg, #fffbeb, #fef3c7)', border: '1px solid #fcd34d' }}
-              className="rounded-xl p-4 flex flex-col gap-2"
-            >
-              <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
-                  <Banknote size={13} className="text-amber-600" />
-                </div>
-                <span className="text-xs font-medium text-gray-500">Cash</span>
-              </div>
-              <p className="text-2xl font-bold text-amber-700">{formatCurrency(totalCash)}</p>
-              <p className="text-xs text-gray-400">Cash payments</p>
-            </div>
-
-            {/* Digital */}
-            <div
-              style={{ background: 'linear-gradient(135deg, #f0f9ff, #e0f2fe)', border: '1px solid #7dd3fc' }}
-              className="rounded-xl p-4 flex flex-col gap-2"
-            >
-              <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-full bg-sky-100 flex items-center justify-center shrink-0">
-                  <CreditCard size={13} className="text-sky-600" />
-                </div>
-                <span className="text-xs font-medium text-gray-500">Digital</span>
-              </div>
-              <p className="text-2xl font-bold text-sky-700">{formatCurrency(totalDigital)}</p>
-              <p className="text-xs text-gray-400">UPI · Bank · Card</p>
-            </div>
-
           </div>
-        )}
-
-        {/* Daily Bar Chart */}
-        {!loading && chartData.length > 0 && (
-          <Card>
-            <CardTitle className="mb-4">Daily Cash Flow</CardTitle>
-            <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={chartData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="gradIn" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#22c55e" />
-                    <stop offset="100%" stopColor="#16a34a" />
-                  </linearGradient>
-                  <linearGradient id="gradOut" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#f87171" />
-                    <stop offset="100%" stopColor="#dc2626" />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
-                <XAxis
-                  dataKey="day"
-                  tick={{ fontSize: 11, fill: '#6b7280' }}
-                  tickLine={false}
-                  axisLine={false}
-                />
-                <YAxis
-                  tick={{ fontSize: 11, fill: '#6b7280' }}
-                  tickLine={false}
-                  axisLine={false}
-                  tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`}
-                  width={48}
-                />
-                <Tooltip content={<ChartTooltip />} cursor={{ fill: '#f9fafb' }} />
-                <Bar dataKey="In" fill="url(#gradIn)" radius={[4, 4, 0, 0]} maxBarSize={28} />
-                <Bar dataKey="Out" fill="url(#gradOut)" radius={[4, 4, 0, 0]} maxBarSize={28} />
-              </BarChart>
-            </ResponsiveContainer>
-          </Card>
         )}
 
         {/* Transactions Table */}
@@ -534,10 +489,9 @@ export function CashFlow() {
                   key={v}
                   onClick={() => setFilterType(v)}
                   className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-colors ${
-                    filterType === v
-                      ? 'bg-gray-900 text-white'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    filterType === v ? 'text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                   }`}
+                  style={filterType === v ? { background: accent } : undefined}
                 >
                   {v === 'all' ? 'All' : v === 'in' ? 'IN' : 'OUT'}
                 </button>
@@ -591,15 +545,15 @@ export function CashFlow() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-100 bg-gray-50">
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Date</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Type</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Category</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Description</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Mode</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Reference</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Sub-brand</th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Amount</th>
-                  <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide"></th>
+                  <th className="px-5 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Date</th>
+                  <th className="px-5 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Type</th>
+                  <th className="px-5 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Category</th>
+                  <th className="px-5 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Description</th>
+                  <th className="px-5 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Mode</th>
+                  <th className="px-5 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Reference</th>
+                  <th className="px-5 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Sub-brand</th>
+                  <th className="px-5 py-4 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Amount</th>
+                  <th className="px-5 py-4 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
@@ -607,7 +561,7 @@ export function CashFlow() {
                   Array.from({ length: 5 }).map((_, i) => (
                     <tr key={i}>
                       {Array.from({ length: 9 }).map((__, j) => (
-                        <td key={j} className="px-4 py-3">
+                        <td key={j} className="px-5 py-4">
                           <div className="h-4 bg-gray-200 rounded animate-pulse" />
                         </td>
                       ))}
@@ -617,46 +571,46 @@ export function CashFlow() {
                   <>
                     {/* Opening Balance row */}
                     {showBalRow && (
-                      <tr className="bg-purple-50/40">
-                        <td className="px-4 py-3 text-gray-500 whitespace-nowrap text-sm border-l-[3px] border-l-purple-400">
+                      <tr className="bg-slate-50">
+                        <td className="px-5 py-4 text-gray-500 whitespace-nowrap text-sm border-l-[3px] border-l-slate-300">
                           {formatDate(start)}
                         </td>
-                        <td className="px-4 py-3">
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-700">BAL</span>
+                        <td className="px-5 py-4">
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-600">BAL</span>
                         </td>
-                        <td className="px-4 py-3 text-gray-500 text-sm">Opening Balance</td>
-                        <td className="px-4 py-3 text-gray-400 text-sm">Carried Forward</td>
-                        <td className="px-4 py-3 text-gray-300">—</td>
-                        <td className="px-4 py-3 text-gray-300 text-xs">—</td>
-                        <td className="px-4 py-3 text-gray-300 text-xs">—</td>
-                        <td className="px-4 py-3 text-right font-bold whitespace-nowrap text-purple-700">
+                        <td className="px-5 py-4 text-gray-500 text-sm">Opening Balance</td>
+                        <td className="px-5 py-4 text-gray-400 text-sm">Carried Forward</td>
+                        <td className="px-5 py-4 text-gray-300">—</td>
+                        <td className="px-5 py-4 text-gray-300 text-xs">—</td>
+                        <td className="px-5 py-4 text-gray-300 text-xs">—</td>
+                        <td className="px-5 py-4 text-right font-bold whitespace-nowrap text-slate-600">
                           {openingBalance < 0 && '−'}{formatCurrency(Math.abs(openingBalance))}
                         </td>
-                        <td className="px-4 py-3 text-center text-gray-300 text-xs">—</td>
+                        <td className="px-5 py-4 text-center text-gray-300 text-xs">—</td>
                       </tr>
                     )}
 
                     {/* Regular transaction rows */}
                     {filteredTransactions.map((t) => (
-                      <tr key={t.id} className="hover:bg-gray-50 transition-colors">
-                        <td className={`px-4 py-3 text-gray-700 whitespace-nowrap border-l-[3px] ${t.type === 'in' ? 'border-l-green-500' : 'border-l-red-500'}`}>
+                      <tr key={t.id} className="group hover:bg-gray-50 transition-colors">
+                        <td className={`px-5 py-4 text-gray-700 whitespace-nowrap border-l-[3px] ${t.type === 'in' ? 'border-l-green-500' : 'border-l-red-500'}`}>
                           {formatDate(t.date)}
                         </td>
-                        <td className="px-4 py-3">
+                        <td className="px-5 py-4">
                           <Badge variant={t.type === 'in' ? 'green' : 'red'}>
                             {t.type === 'in' ? 'IN' : 'OUT'}
                           </Badge>
                         </td>
-                        <td className="px-4 py-3 text-gray-700">{t.category}</td>
-                        <td className="px-4 py-3 text-gray-700 max-w-[200px] truncate">{t.description}</td>
-                        <td className="px-4 py-3">{paymentModeBadge(t.payment_mode)}</td>
-                        <td className="px-4 py-3 text-gray-500 text-xs">{t.reference ?? '—'}</td>
-                        <td className="px-4 py-3 text-gray-500 text-xs">{t.sub_brand ?? '—'}</td>
-                        <td className={`px-4 py-3 text-right font-bold text-base whitespace-nowrap ${t.type === 'in' ? 'text-green-700' : 'text-red-700'}`}>
+                        <td className="px-5 py-4 text-gray-700">{t.category}</td>
+                        <td className="px-5 py-4 text-gray-700 max-w-[200px] truncate">{t.description}</td>
+                        <td className="px-5 py-4">{paymentModeBadge(t.payment_mode)}</td>
+                        <td className="px-5 py-4 text-gray-500 text-xs">{t.reference ?? '—'}</td>
+                        <td className="px-5 py-4 text-gray-500 text-xs">{t.sub_brand ?? '—'}</td>
+                        <td className={`px-5 py-4 text-right font-bold text-base whitespace-nowrap ${t.type === 'in' ? 'text-green-700' : 'text-red-700'}`}>
                           {t.type === 'out' && '−'}{formatCurrency(t.amount)}
                         </td>
-                        <td className="px-4 py-3 text-center">
-                          <div className="flex items-center justify-center gap-1">
+                        <td className="px-5 py-4 text-center">
+                          <div className="flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
                             <button
                               onClick={() => openEdit(t)}
                               className="p-1 rounded-lg hover:bg-blue-50 text-gray-400 hover:text-blue-500 transition-colors"
@@ -692,7 +646,8 @@ export function CashFlow() {
                             <p className="text-gray-600 font-semibold text-base">No transactions in {getMonthLabel(year, month)}</p>
                             <button
                               onClick={openAddForm}
-                              className="mt-1 inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+                              className="mt-1 inline-flex items-center gap-2 px-4 py-2 text-white rounded-lg text-sm font-medium transition-opacity hover:opacity-90"
+                              style={{ background: accent }}
                             >
                               <Plus size={14} /> Add Transaction
                             </button>
@@ -813,9 +768,10 @@ export function CashFlow() {
                   onClick={() => setForm((f) => ({ ...f, payment_mode: pm.value }))}
                   className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${
                     form.payment_mode === pm.value
-                      ? 'bg-blue-600 border-blue-600 text-white'
-                      : 'bg-white border-gray-300 text-gray-600 hover:bg-blue-50 hover:border-blue-400'
+                      ? 'text-white'
+                      : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50 hover:border-gray-400'
                   }`}
+                  style={form.payment_mode === pm.value ? { background: accent, borderColor: accent } : undefined}
                 >
                   {pm.label}
                 </button>
