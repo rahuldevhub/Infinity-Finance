@@ -23,7 +23,7 @@ import { Badge } from '../components/ui/Badge';
 import { Card, CardTitle } from '../components/ui/Card';
 import { CompactMetric } from '../components/dashboard/DashboardCards';
 import { Modal } from '../components/ui/Modal';
-import { formatCurrency, formatDate, getMonthRange, getMonthLabel } from '../utils/formatters';
+import { formatCurrency, formatDate, getMonthRange, getMonthLabel, toLocalDateString } from '../utils/formatters';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -113,7 +113,7 @@ function ChartTooltip({
 
 function defaultForm() {
   return {
-    date: new Date().toISOString().split('T')[0],
+    date: toLocalDateString(),
     type: 'in' as CashTransaction['type'],
     category: IN_CATEGORIES[0],
     description: '',
@@ -685,7 +685,7 @@ export function CashFlow() {
             type="date"
             required
             value={form.date}
-            max={today.toISOString().split('T')[0]}
+            max={toLocalDateString(today)}
             onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))}
           />
 

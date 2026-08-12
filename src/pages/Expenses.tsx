@@ -10,7 +10,7 @@ import { Input } from '../components/ui/Input';
 import { Badge } from '../components/ui/Badge';
 import { Card } from '../components/ui/Card';
 import { Modal } from '../components/ui/Modal';
-import { formatCurrency, formatDate, getMonthRange } from '../utils/formatters';
+import { formatCurrency, formatDate, getMonthRange, toLocalDateString } from '../utils/formatters';
 
 export function Expenses() {
   const { user } = useAuth();
@@ -92,7 +92,7 @@ export function Expenses() {
   }
 
   const defaultForm = {
-    date: today.toISOString().split('T')[0],
+    date: toLocalDateString(today),
     vendor_name: '',
     description: '',
     category: 'Office Supplies',

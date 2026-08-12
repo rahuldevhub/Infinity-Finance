@@ -10,7 +10,7 @@ import { useBusinessSettings } from '../hooks/useBusinessSettings';
 import { useAuth } from '../hooks/useAuth';
 import { INDIAN_STATES } from '../types';
 import { isInterState } from '../utils/gstCalculations';
-import { formatCurrency } from '../utils/formatters';
+import { formatCurrency, toLocalDateString } from '../utils/formatters';
 import { ClientSelector } from '../components/invoice/ClientSelector';
 import { TopBar } from '../components/layout/TopBar';
 import { Button } from '../components/ui/Button';
@@ -116,7 +116,7 @@ export function CreateQuotation() {
 
   // ── Quotation Details ──
   const [quotationNumber, setQuotationNumber] = useState('');
-  const [quotationDate, setQuotationDate] = useState(new Date().toISOString().split('T')[0]);
+  const [quotationDate, setQuotationDate] = useState(toLocalDateString());
   const [validUntil, setValidUntil] = useState('');
   const [subBrand, setSubBrand] = useState('Ritera Publishing');
 

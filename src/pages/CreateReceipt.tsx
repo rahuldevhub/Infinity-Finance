@@ -13,7 +13,7 @@ import { TopBar } from '../components/layout/TopBar';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Card } from '../components/ui/Card';
-import { formatCurrency } from '../utils/formatters';
+import { formatCurrency, toLocalDateString } from '../utils/formatters';
 import { sendReceiptEmail } from '../utils/sendReceiptEmail';
 import { supabase } from '../lib/supabase';
 
@@ -49,7 +49,7 @@ export function CreateReceipt() {
 
   // ── Form State ──
   const [receiptNumber, setReceiptNumber] = useState('');
-  const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split('T')[0]);
+  const [paymentDate, setPaymentDate] = useState(toLocalDateString());
   const [subBrand, setSubBrand] = useState('Ritera Publishing');
   const [amount, setAmount] = useState('');
   const [paymentMode, setPaymentMode] = useState<PaymentMode>('bank');

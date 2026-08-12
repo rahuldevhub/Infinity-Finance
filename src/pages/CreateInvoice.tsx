@@ -10,7 +10,7 @@ import type { InvoiceItem } from '../types';
 import { INDIAN_STATES, GST_RATES } from '../types';
 import { calculateLineItem, calculateInvoiceTotals, isInterState } from '../utils/gstCalculations';
 import { generateDocNumber } from '../utils/documentNumber';
-import { formatCurrency } from '../utils/formatters';
+import { formatCurrency, toLocalDateString } from '../utils/formatters';
 import { ClientSelector } from '../components/invoice/ClientSelector';
 import { TopBar } from '../components/layout/TopBar';
 import { Button } from '../components/ui/Button';
@@ -57,7 +57,7 @@ export function CreateInvoice() {
 
   const [invoiceType, setInvoiceType] = useState<'gst' | 'non_gst'>(initialType);
   const [invoiceNumber, setInvoiceNumber] = useState('');
-  const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().split('T')[0]);
+  const [invoiceDate, setInvoiceDate] = useState(toLocalDateString());
   const [dueDate, setDueDate] = useState('');
   const [subBrand, setSubBrand] = useState('Ritera Publishing');
   const [selectedClient, setSelectedClient] = useState<any>(null);

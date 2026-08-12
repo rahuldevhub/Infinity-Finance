@@ -9,7 +9,7 @@ import { useClients } from '../hooks/useClients';
 import { useBusinessSettings } from '../hooks/useBusinessSettings';
 import { useAuth } from '../hooks/useAuth';
 import { isInterState } from '../utils/gstCalculations';
-import { formatCurrency } from '../utils/formatters';
+import { formatCurrency, toLocalDateString } from '../utils/formatters';
 import { ClientSelector } from '../components/invoice/ClientSelector';
 import { TopBar } from '../components/layout/TopBar';
 import { Button } from '../components/ui/Button';
@@ -54,7 +54,7 @@ export function CreateProforma() {
 
   // ── Proforma Details ──
   const [proformaNumber, setProformaNumber] = useState('');
-  const [proformaDate, setProformaDate] = useState(new Date().toISOString().split('T')[0]);
+  const [proformaDate, setProformaDate] = useState(toLocalDateString());
   const [dueDate, setDueDate] = useState('');
   const [subBrand, setSubBrand] = useState('Ritera Publishing');
 
