@@ -60,7 +60,17 @@ body {
 
 /* Safe area padding for mobile bottom nav */
 .safe-bottom {
-  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-bottom: max(10px, env(safe-area-inset-bottom, 0px));
+}
+
+/* Page content clearance so it never sits under the mobile bottom nav */
+.mobile-content-pad {
+  padding-bottom: calc(78px + max(10px, env(safe-area-inset-bottom, 0px)) + 16px);
+}
+@media (min-width: 1024px) {
+  .mobile-content-pad {
+    padding-bottom: 0;
+  }
 }
 
 /* Scrollbar styling */

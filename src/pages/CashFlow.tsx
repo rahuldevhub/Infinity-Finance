@@ -5,9 +5,8 @@ import {
 } from 'lucide-react';
 import {
   ResponsiveContainer,
-  ComposedChart,
-  Bar,
-  Line,
+  AreaChart,
+  Area,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -96,7 +95,7 @@ function CountUp({ value, negative = false }: { value: number; negative?: boolea
   return <span ref={ref} />;
 }
 
-// ─── Chart tooltip — Date / Money In / Money Out / Running Balance ────────────
+// ─── Chart data point — Date / Money In / Money Out / Running Balance ─────────
 
 interface DayPoint {
   day: number;
@@ -105,32 +104,6 @@ interface DayPoint {
   In: number;
   Out: number;
   Balance: number;
-}
-
-function MovementTooltip({ active, payload }: { active?: boolean; payload?: Array<{ payload: DayPoint }> }) {
-  if (!active || !payload || payload.length === 0) return null;
-  const p = payload[0].payload;
-  return (
-    <div className="bg-white border border-gray-100 rounded-xl px-3.5 py-3 text-sm min-w-[170px]" style={{ boxShadow: '0 4px 12px rgba(0,0,0,0.06)' }}>
-      <p className="font-semibold text-gray-800 mb-2 text-xs">{p.fullLabel}</p>
-      <div className="space-y-1 text-xs">
-        <div className="flex items-center justify-between gap-4">
-          <span className="text-gray-400">Inflow</span>
-          <span className="font-semibold" style={{ color: GREEN }}>{formatCurrency(p.In)}</span>
-        </div>
-        <div className="flex items-center justify-between gap-4">
-          <span className="text-gray-400">Outflow</span>
-          <span className="font-semibold" style={{ color: RED }}>{formatCurrency(p.Out)}</span>
-        </div>
-        <div className="flex items-center justify-between gap-4 pt-1 mt-1 border-t border-gray-100">
-          <span className="text-gray-400">Balance</span>
-          <span className="font-bold" style={{ color: INK }}>
-            {p.Balance < 0 && '−'}{formatCurrency(Math.abs(p.Balance))}
-          </span>
-        </div>
-      </div>
-    </div>
-  );
 }
 
 // ─── Summary strip item ────────────────────────────────────────────────────────
@@ -506,31 +479,31 @@ export function CashFlow() {
             <div className="card-surface p-6 flex flex-col">
               <div className="flex items-start justify-between gap-4 flex-wrap mb-4">
                 <h3 className="text-base font-semibold" style={{ color: INK }}>Cash Movement</h3>
-                <div className="flex items-center gap-4 text-xs text-gray-400">
-                  <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm inline-block" style={{ background: GREEN }} />Inflow</span>
-                  <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm inline-block" style={{ background: RED }} />Outflow</span>
-                  <span className="flex items-center gap-1.5"><span className="w-3 h-[2px] inline-block" style={{ background: INK }} />Balance</span>
-                </div>
               </div>
 
               {series.length > 0 ? (
                 <div className="flex-1 min-h-[260px]">
                   <ResponsiveContainer width="100%" height="100%">
-                    <ComposedChart data={series} margin={{ top: 8, right: 28, left: 0, bottom: 0 }}>
+                    <AreaChart data={series} margin={{ top: 12, right: 28, left: 0, bottom: 0 }}>
+                      <defs>
+                        <linearGradient id="balanceGradient" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor={GREEN} stopOpacity={0.24} />
+                          <stop offset="95%" stopColor={GREEN} stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
                       <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} />
                       <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#9ca3af' }} tickLine={false} axisLine={false} minTickGap={24} />
                       <YAxis tick={{ fontSize: 11, fill: '#9ca3af' }} tickLine={false} axisLine={false} tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`} width={44} />
-                      <Tooltip content={<MovementTooltip />} cursor={{ fill: '#f8fafc' }} />
-                      <Bar dataKey="In" fill={GREEN} radius={[4, 4, 0, 0]} maxBarSize={16} animationDuration={600} />
-                      <Bar dataKey="Out" fill={RED} radius={[4, 4, 0, 0]} maxBarSize={16} animationDuration={600} />
-                      <Line
+                      <Tooltip
+                        contentStyle={{ background: '#fff', border: '1px solid #f3f4f6', borderRadius: 12, fontSize: 12, boxShadow: '0 4px 12px rgba(0,0,0,0.06)' }}
+                        formatter={(val) => ['₹' + Number(val).toLocaleString('en-IN'), 'Balance']}
+                      />
+                      <Area
                         type="monotone"
                         dataKey="Balance"
-                        stroke={INK}
+                        stroke={GREEN}
                         strokeWidth={2.5}
-                        dot={{ r: 3, fill: INK, strokeWidth: 0 }}
-                        activeDot={{ r: 5, fill: INK, strokeWidth: 0 }}
-                        animationDuration={700}
+                        fill="url(#balanceGradient)"
                         label={(props: { x?: number | string; y?: number | string; index?: number }) => {
                           if (props.index !== lastPointIndex || props.x === undefined || props.y === undefined) return <g />;
                           const bal = series[lastPointIndex].Balance;
@@ -542,7 +515,7 @@ export function CashFlow() {
                               textAnchor="end"
                               fontSize={11}
                               fontWeight={700}
-                              fill={INK}
+                              fill={GREEN}
                               style={{ paintOrder: 'stroke', stroke: '#fff', strokeWidth: 4 }}
                             >
                               {text}
@@ -550,7 +523,7 @@ export function CashFlow() {
                           );
                         }}
                       />
-                    </ComposedChart>
+                    </AreaChart>
                   </ResponsiveContainer>
                 </div>
               ) : (

@@ -59,8 +59,11 @@ export function MobileNav() {
       {/* Create FAB */}
       <button
         onClick={() => setCreateOpen(true)}
-        className="lg:hidden fixed right-4 bottom-20 z-50 w-14 h-14 rounded-full text-white flex items-center justify-center shadow-lg shadow-slate-900/30 active:scale-95 transition-transform"
-        style={{ background: 'var(--accent)' }}
+        className="lg:hidden fixed right-4 z-50 w-14 h-14 rounded-full text-white flex items-center justify-center shadow-lg shadow-slate-900/30 active:scale-95 transition-transform"
+        style={{
+          background: 'var(--accent)',
+          bottom: 'calc(78px + max(10px, env(safe-area-inset-bottom, 0px)) + 16px)',
+        }}
         aria-label="Create"
       >
         <Plus size={26} />
@@ -68,7 +71,7 @@ export function MobileNav() {
 
       {/* Bottom tab bar */}
       <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur border-t border-gray-100 z-50 safe-bottom">
-        <div className="flex items-stretch">
+        <div className="flex items-stretch h-[78px]">
           {TABS.map((tab) => {
             const active = isTabActive(tab, path);
             const Icon = tab.icon;
@@ -76,7 +79,7 @@ export function MobileNav() {
               <Link
                 key={tab.to}
                 to={tab.to}
-                className="relative flex-1 flex flex-col items-center gap-0.5 py-2.5"
+                className="relative flex-1 flex flex-col items-center justify-center gap-1 min-w-[64px] active:bg-gray-50 transition-colors"
                 style={{ color: active ? 'var(--accent)' : '#94a3b8' }}
               >
                 {active && (
@@ -87,8 +90,8 @@ export function MobileNav() {
                     transition={{ type: 'spring', stiffness: 500, damping: 40 }}
                   />
                 )}
-                <Icon size={21} strokeWidth={active ? 2.4 : 2} />
-                <span className="text-[10px] font-semibold">{tab.label}</span>
+                <Icon size={23} strokeWidth={active ? 2.4 : 2} />
+                <span className="text-[12px] font-semibold">{tab.label}</span>
               </Link>
             );
           })}
