@@ -84,12 +84,14 @@ export function Dashboard() {
   }
 
   // ── Derived: goal progress + business health (guarded for null stats) ──
-  const goalPct = stats ? Math.min(100, Math.round((stats.totalRevenue / goal) * 100)) : 0;
-  const profit = stats ? stats.totalSales - stats.totalExpenses : 0;
+  // Cash-basis: goal + health both track actual money collected (Payment Receipts),
+  // not merely invoiced amounts — GST/receivables signals stay invoice-based below.
+  const goalPct = stats ? Math.min(100, Math.round((stats.totalCollected / goal) * 100)) : 0;
+  const profit = stats ? stats.totalCollected - stats.totalExpenses : 0;
   const pendingRatio = stats && stats.totalSales > 0 ? stats.pendingInvoicesValue / stats.totalSales : 0;
   const health = stats
     ? Math.min(100, Math.round(
-        (stats.totalRevenue > 0 ? 30 : 0) +
+        (stats.totalCollected > 0 ? 30 : 0) +
         (profit > 0 ? 30 : 0) +
         (stats.itcAvailable > 0 ? 15 : 0) +
         (pendingRatio < 0.4 ? 25 : pendingRatio < 0.7 ? 12 : 0)
@@ -99,7 +101,7 @@ export function Dashboard() {
   const healthColor = health >= 80 ? INCOME : health >= 55 ? '#f59e0b' : EXPENSE;
   const healthIndicators = stats
     ? [
-        { label: 'Revenue', ok: stats.totalRevenue > 0, note: stats.totalRevenue > 0 ? 'Positive' : 'None this month' },
+        { label: 'Collections', ok: stats.totalCollected > 0, note: stats.totalCollected > 0 ? 'Positive' : 'None this month' },
         { label: 'Profit', ok: profit > 0, note: `${profit >= 0 ? '+' : '−'}${formatCurrency(Math.abs(profit))}` },
         { label: 'GST filing', ok: true, note: 'Ready to file' },
         { label: 'Receivables', ok: pendingRatio < 0.4, note: formatCurrency(stats.pendingInvoicesValue) },
@@ -121,9 +123,9 @@ export function Dashboard() {
   const isCurrentMonth = year === today.getFullYear() && month === today.getMonth();
   const monthLabel = getMonthLabel(year, month);
 
-  const revenueChartData = monthlyData.map((m, i) => ({
+  const collectedChartData = monthlyData.map((m, i) => ({
     month: m.month,
-    revenue: trends.revenue[i] ?? 0,
+    collected: trends.collected[i] ?? 0,
   }));
 
   return (
@@ -195,20 +197,20 @@ export function Dashboard() {
             <div className="card-surface p-6">
               <div className="flex items-start justify-between mb-1">
                 <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Total Revenue</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Total Collected</p>
                   <div className="flex items-end gap-3 mt-1">
                     <span className="text-3xl font-extrabold text-gray-900" style={{ fontFamily: '"Nunito", ui-rounded, sans-serif', letterSpacing: '-0.03em' }}>
-                      {formatCurrency(stats.totalRevenue)}
+                      {formatCurrency(trends.collectedPeriodTotal)}
                     </span>
-                    {trends.revenueDelta != null && (
+                    {trends.collectedDelta != null && (
                       <span
                         className="mb-1 inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full"
                         style={{
-                          background: trends.revenueDelta >= 0 ? '#f0fdf4' : '#fef2f2',
-                          color: trends.revenueDelta >= 0 ? '#16a34a' : '#dc2626',
+                          background: trends.collectedDelta >= 0 ? '#f0fdf4' : '#fef2f2',
+                          color: trends.collectedDelta >= 0 ? '#16a34a' : '#dc2626',
                         }}
                       >
-                        {trends.revenueDelta >= 0 ? '▲' : '▼'} {Math.abs(trends.revenueDelta).toFixed(0)}%
+                        {trends.collectedDelta >= 0 ? '▲' : '▼'} {Math.abs(trends.collectedDelta).toFixed(0)}%
                       </span>
                     )}
                   </div>
@@ -218,9 +220,9 @@ export function Dashboard() {
                 </span>
               </div>
 
-              {revenueChartData.length > 0 ? (
+              {collectedChartData.length > 0 ? (
                 <ResponsiveContainer width="100%" height={240}>
-                  <AreaChart data={revenueChartData} margin={{ top: 12, right: 4, left: 0, bottom: 0 }}>
+                  <AreaChart data={collectedChartData} margin={{ top: 12, right: 4, left: 0, bottom: 0 }}>
                     <defs>
                       <linearGradient id="revGradient" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%" stopColor={INCOME} stopOpacity={0.24} />
@@ -238,14 +240,14 @@ export function Dashboard() {
                     />
                     <Tooltip
                       contentStyle={{ background: '#fff', border: '1px solid #f3f4f6', borderRadius: 12, fontSize: 12, boxShadow: '0 4px 12px rgba(0,0,0,0.06)' }}
-                      formatter={(val) => ['₹' + Number(val).toLocaleString('en-IN'), 'Revenue']}
+                      formatter={(val) => ['₹' + Number(val).toLocaleString('en-IN'), 'Collected']}
                     />
-                    <Area type="monotone" dataKey="revenue" stroke={INCOME} strokeWidth={2.5} fill="url(#revGradient)" />
+                    <Area type="monotone" dataKey="collected" stroke={INCOME} strokeWidth={2.5} fill="url(#revGradient)" />
                   </AreaChart>
                 </ResponsiveContainer>
               ) : (
                 <div className="flex items-center justify-center h-[240px]">
-                  <p className="text-sm text-gray-400">No revenue data for this period</p>
+                  <p className="text-sm text-gray-400">No collections recorded for this period</p>
                 </div>
               )}
             </div>
@@ -310,7 +312,7 @@ export function Dashboard() {
                 </button>
               </div>
               <div className="flex items-end gap-2 mb-3">
-                <span className="text-3xl font-extrabold text-gray-900" style={{ fontFamily: '"Nunito", ui-rounded, sans-serif', letterSpacing: '-0.03em' }}>{formatCurrency(stats.totalRevenue)}</span>
+                <span className="text-3xl font-extrabold text-gray-900" style={{ fontFamily: '"Nunito", ui-rounded, sans-serif', letterSpacing: '-0.03em' }}>{formatCurrency(stats.totalCollected)}</span>
                 <span className="text-sm text-gray-400 mb-1">/ {formatCurrency(goal)}</span>
               </div>
               <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
@@ -319,7 +321,7 @@ export function Dashboard() {
               <div className="flex items-center justify-between mt-2">
                 <span className="text-xs font-semibold" style={{ color: INCOME }}>{goalPct}% reached</span>
                 <span className="text-xs text-gray-400">
-                  {stats.totalRevenue >= goal ? 'Goal achieved 🎉' : `${formatCurrency(goal - stats.totalRevenue)} to go`}
+                  {stats.totalCollected >= goal ? 'Goal achieved 🎉' : `${formatCurrency(goal - stats.totalCollected)} to go`}
                 </span>
               </div>
             </div>

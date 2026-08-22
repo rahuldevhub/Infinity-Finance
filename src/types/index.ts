@@ -96,7 +96,8 @@ export interface DashboardStats {
   netGSTPayable: number;
   pendingInvoicesCount: number;
   pendingInvoicesValue: number;
-  totalRevenue: number;
+  /** Actual money collected this month (Payment Receipts) — cash-basis, not invoice-basis. */
+  totalCollected: number;
   pendingProformasCount: number;
 }
 

@@ -152,17 +152,17 @@ function ProfileMenu() {
 export function TopBar({ title, subtitle, actions }: TopBarProps) {
   return (
     <header className="bg-white border-b border-gray-200 px-5 md:px-8 py-4 flex items-center gap-4 sticky top-0 z-30">
-      <div className="flex items-center gap-3 shrink-0">
-        <div className="md:hidden w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center">
+      <div className="flex items-center gap-3 min-w-0 flex-1 md:flex-none">
+        <div className="md:hidden w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center shrink-0">
           <span className="text-white font-bold text-xs">IG</span>
         </div>
-        <div>
-          <h1 className="text-lg font-bold text-gray-900 tracking-tight">{title}</h1>
-          {subtitle && <p className="text-xs text-gray-500">{subtitle}</p>}
+        <div className="min-w-0">
+          <h1 className="text-lg font-bold text-gray-900 tracking-tight truncate">{title}</h1>
+          {subtitle && <p className="text-xs text-gray-500 truncate md:whitespace-normal">{subtitle}</p>}
         </div>
       </div>
 
-      <div className="flex-1 flex justify-center px-2">
+      <div className="hidden md:flex flex-1 justify-center px-2">
         <GlobalSearch />
       </div>
 

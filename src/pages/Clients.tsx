@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Edit2, Trash2, Search, Users, ShieldCheck, Building2, UserPlus } from 'lucide-react';
+import { Plus, Edit2, Trash2, Search, Users, ShieldCheck, Building2, UserPlus, ChevronRight } from 'lucide-react';
 import { useClients } from '../hooks/useClients';
 import type { Client } from '../types';
 import { INDIAN_STATES } from '../types';
@@ -112,16 +112,17 @@ export function Clients() {
     <div>
       <TopBar
         title="Clients"
+        subtitle="Manage your customers"
         actions={
-          <Button size="sm" onClick={openCreate}>
-            <Plus size={16} /> Add Client
+          <Button size="sm" onClick={openCreate} aria-label="Add Client">
+            <Plus size={16} /> <span className="hidden sm:inline">Add Client</span>
           </Button>
         }
       />
 
-      <div className="px-4 md:px-6 py-6 space-y-5">
-        {/* Top metrics */}
-        <div className="grid grid-cols-3 gap-4">
+      <div className="px-4 md:px-6 py-5 md:py-6 space-y-4 md:space-y-5">
+        {/* Top metrics — desktop */}
+        <div className="hidden md:grid md:grid-cols-3 gap-4">
           <div className="card-surface hover-lift p-4 flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'rgba(var(--accent-rgb),0.07)' }}>
               <Users size={18} style={{ color: 'var(--accent)' }} />
@@ -151,18 +152,125 @@ export function Clients() {
           </div>
         </div>
 
+        {/* Top metrics — mobile */}
+        <div className="md:hidden space-y-3">
+          <div className="card-surface p-4 flex items-center gap-3">
+            <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'rgba(var(--accent-rgb),0.07)' }}>
+              <Users size={20} style={{ color: 'var(--accent)' }} />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Total Clients</p>
+              <p className="text-3xl font-extrabold text-gray-900" style={{ fontFamily: '"Nunito", ui-rounded, sans-serif', letterSpacing: '-0.02em' }}>{total}</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="card-surface p-3.5">
+              <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center mb-2">
+                <ShieldCheck size={16} className="text-blue-600" />
+              </div>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">GST</p>
+              <p className="text-xl font-extrabold text-gray-900" style={{ fontFamily: '"Nunito", ui-rounded, sans-serif', letterSpacing: '-0.02em' }}>{gstCount}</p>
+            </div>
+            <div className="card-surface p-3.5">
+              <div className="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center mb-2">
+                <Building2 size={16} className="text-gray-500" />
+              </div>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Non-GST</p>
+              <p className="text-xl font-extrabold text-gray-900" style={{ fontFamily: '"Nunito", ui-rounded, sans-serif', letterSpacing: '-0.02em' }}>{nonGst}</p>
+            </div>
+          </div>
+        </div>
+
         {/* Search */}
-        <div className="relative max-w-xs">
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+        <div className="relative w-full md:max-w-xs">
+          <Search size={16} className="absolute left-3.5 md:left-3 top-1/2 -translate-y-1/2 text-gray-400" />
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by name..."
-            className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-slate-300"
+            placeholder="Search clients..."
+            className="w-full pl-10 md:pl-9 pr-4 py-3 md:py-2 border border-gray-200 rounded-xl md:rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-slate-300"
           />
         </div>
 
-        <Card padding={false}>
+        {/* Client list — mobile */}
+        <div className="md:hidden space-y-2.5">
+          {loading ? (
+            Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="card-surface p-4 flex items-center gap-3">
+                <div className="w-11 h-11 rounded-full bg-gray-100 animate-pulse shrink-0" />
+                <div className="flex-1 space-y-2">
+                  <div className="h-3.5 bg-gray-100 rounded animate-pulse w-2/3" />
+                  <div className="h-3 bg-gray-100 rounded animate-pulse w-1/3" />
+                </div>
+              </div>
+            ))
+          ) : clients.length === 0 ? (
+            search ? (
+              <p className="text-sm text-gray-400 text-center py-16">No clients match "{search}".</p>
+            ) : (
+              <div className="card-surface flex flex-col items-center gap-3 text-center py-10 px-4">
+                <div className="w-12 h-12 rounded-2xl bg-gray-50 flex items-center justify-center">
+                  <Users size={22} className="text-gray-300" />
+                </div>
+                <div>
+                  <p className="text-gray-700 font-semibold">No clients yet</p>
+                  <p className="text-sm text-gray-400 mt-0.5">Add your first client to start invoicing.</p>
+                </div>
+                <button
+                  onClick={openCreate}
+                  className="mt-1 inline-flex items-center gap-2 px-4 py-2.5 text-white rounded-lg text-sm font-medium active:opacity-90 transition-opacity"
+                  style={{ background: 'var(--accent)' }}
+                >
+                  <Plus size={14} /> Add Client
+                </button>
+              </div>
+            )
+          ) : (
+            clients.map((c) => {
+              const tint = tintFor(c.name);
+              return (
+                <div
+                  key={c.id}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => openEdit(c)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openEdit(c); }
+                  }}
+                  className="card-surface flex items-center gap-3 p-4 active:bg-gray-50 transition-colors cursor-pointer"
+                >
+                  <div
+                    className="w-11 h-11 rounded-full flex items-center justify-center text-sm font-bold shrink-0"
+                    style={{ background: tint.bg, color: tint.fg }}
+                  >
+                    {initials(c.name)}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-semibold text-gray-900 truncate">{c.name}</p>
+                    {c.gstin ? (
+                      <>
+                        <p className="text-xs text-gray-400 mt-0.5">GST Registered</p>
+                        <p className="text-[11px] font-mono text-gray-400 truncate">{c.gstin}</p>
+                      </>
+                    ) : (
+                      <p className="text-xs text-gray-400 mt-0.5">Non-GST</p>
+                    )}
+                  </div>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setDeleteError(''); setConfirmDelete(c.id); }}
+                    className="p-2 -m-2 rounded-lg text-gray-300 active:bg-red-50 active:text-red-500 shrink-0"
+                    aria-label="Delete client"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                  <ChevronRight size={18} className="text-gray-300 shrink-0" />
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        <Card padding={false} className="hidden md:block">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>

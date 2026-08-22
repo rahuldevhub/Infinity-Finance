@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import {
   ChevronLeft, ChevronRight, Plus, Trash2, Pencil, Download, X, Search,
   Scale, PiggyBank, Wallet, ArrowUpRight, ArrowDownRight, ArrowDown, ArrowUp,
+  SlidersHorizontal,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -22,6 +23,7 @@ import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Card, CardTitle } from '../components/ui/Card';
 import { Modal } from '../components/ui/Modal';
+import { BottomSheet } from '../components/ui/BottomSheet';
 import { formatCurrency, formatDate, getMonthRange, getMonthLabel, toLocalDateString } from '../utils/formatters';
 
 // ─── Design tokens (page-scoped — Cash Flow uses green as its primary accent) ─
@@ -180,6 +182,11 @@ export function CashFlow() {
   const [filterMode, setFilterMode] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<SortBy>('date-desc');
+
+  // ── Mobile-only UI state (bottom sheets) ──────────────────────────────────
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
+  const [actionTxn, setActionTxn] = useState<CashTransaction | null>(null);
+  const mobileFilterCount = [filterCategory !== '', filterMode !== '', sortBy !== 'date-desc'].filter(Boolean).length;
 
   const hasActiveFilters = filterType !== 'all' || filterCategory !== '' || filterMode !== '' || searchQuery !== '' || sortBy !== 'date-desc';
 
@@ -412,6 +419,302 @@ export function CashFlow() {
       />
 
       <div className="px-4 md:px-6 py-6 space-y-6">
+
+        {/* ================================================================
+            MOBILE — purpose-built Cash Flow experience (< md)
+        ================================================================= */}
+        <div className="md:hidden space-y-4">
+
+          {/* Period controls */}
+          <div className="flex items-center gap-2 bg-white border border-gray-100 rounded-xl px-1.5 py-1 shadow-sm">
+            <button onClick={prevMonth} className="w-10 h-10 flex items-center justify-center rounded-lg text-gray-400 active:bg-gray-100 transition-colors">
+              <ChevronLeft size={18} />
+            </button>
+            <span className="flex-1 text-sm font-semibold text-gray-800 text-center select-none">
+              {getMonthLabel(year, month)}
+            </span>
+            <button
+              onClick={nextMonth}
+              disabled={isCurrentMonth}
+              className="w-10 h-10 flex items-center justify-center rounded-lg text-gray-400 active:bg-gray-100 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+            >
+              <ChevronRight size={18} />
+            </button>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {isCurrentMonth ? (
+              <span className="flex-1 text-center text-xs font-semibold px-3 py-2.5 rounded-xl" style={{ background: GREEN_SOFT, color: GREEN }}>
+                This Month
+              </span>
+            ) : (
+              <button
+                onClick={jumpToThisMonth}
+                className="flex-1 text-xs font-semibold px-3 py-2.5 rounded-xl bg-gray-100 text-gray-600 active:bg-gray-200 transition-colors"
+              >
+                Jump to This Month
+              </button>
+            )}
+            <button
+              onClick={exportCSV}
+              disabled={filteredTransactions.length === 0}
+              className="flex items-center gap-1.5 text-xs font-semibold px-3.5 py-2.5 rounded-xl border border-gray-200 text-gray-600 active:bg-gray-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+            >
+              <Download size={14} /> Export
+            </button>
+          </div>
+
+          {/* Closing balance — hero metric */}
+          {loading ? (
+            <div className="h-[132px] card-surface animate-pulse" />
+          ) : (
+            <div className="card-surface p-5">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Closing Balance</p>
+              <p className="text-[32px] leading-tight font-extrabold mt-1" style={{ color: INK, fontFamily: '"Nunito", ui-rounded, sans-serif', letterSpacing: '-0.02em' }}>
+                <CountUp value={closingBalance} negative />
+              </p>
+              <p className="text-xs font-semibold mt-1.5" style={{ color: netProfit >= 0 ? GREEN : RED }}>
+                {netProfit >= 0 ? '+' : '−'}{formatCurrency(Math.abs(netProfit))} net this month
+              </p>
+              <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-50">
+                <span className="text-xs text-gray-400">Opening balance</span>
+                <span className="text-xs font-semibold text-gray-500">{formatCurrency(openingBalance)}</span>
+              </div>
+            </div>
+          )}
+
+          {/* Money in / out */}
+          {!loading && (
+            <div className="grid grid-cols-2 gap-3">
+              <div className="card-surface p-3.5">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Money In</p>
+                <p className="text-xl font-extrabold mt-1" style={{ color: GREEN, fontFamily: '"Nunito", ui-rounded, sans-serif', letterSpacing: '-0.02em' }}>
+                  {formatCurrency(totalIn)}
+                </p>
+              </div>
+              <div className="card-surface p-3.5">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Money Out</p>
+                <p className="text-xl font-extrabold mt-1" style={{ color: RED, fontFamily: '"Nunito", ui-rounded, sans-serif', letterSpacing: '-0.02em' }}>
+                  {formatCurrency(totalOut)}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Cash Movement chart */}
+          {loading ? (
+            <div className="h-[280px] card-surface animate-pulse" />
+          ) : (
+            <div className="card-surface p-4">
+              <h3 className="text-sm font-semibold" style={{ color: INK }}>Cash Movement</h3>
+              <p className="text-xs text-gray-400 mb-2">Running balance this month</p>
+              {series.length > 0 ? (
+                <div style={{ height: 230 }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={series} margin={{ top: 18, right: 6, left: 0, bottom: 0 }}>
+                      <defs>
+                        <linearGradient id="balanceGradientMobile" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor={GREEN} stopOpacity={0.24} />
+                          <stop offset="95%" stopColor={GREEN} stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} />
+                      <XAxis dataKey="label" tick={{ fontSize: 10, fill: '#9ca3af' }} tickLine={false} axisLine={false} minTickGap={32} />
+                      <YAxis tick={{ fontSize: 10, fill: '#9ca3af' }} tickLine={false} axisLine={false} tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`} width={38} />
+                      <Tooltip
+                        contentStyle={{ background: '#fff', border: '1px solid #f3f4f6', borderRadius: 12, fontSize: 12, boxShadow: '0 4px 12px rgba(0,0,0,0.06)' }}
+                        formatter={(val) => ['₹' + Number(val).toLocaleString('en-IN'), 'Balance']}
+                      />
+                      <Area
+                        type="monotone"
+                        dataKey="Balance"
+                        stroke={GREEN}
+                        strokeWidth={2.5}
+                        fill="url(#balanceGradientMobile)"
+                        label={(props: { x?: number | string; y?: number | string; index?: number }) => {
+                          if (props.index !== lastPointIndex || props.x === undefined || props.y === undefined) return <g />;
+                          const bal = series[lastPointIndex].Balance;
+                          const text = `${bal < 0 ? '−' : ''}${formatCurrency(Math.abs(bal))}`;
+                          return (
+                            <text
+                              x={Number(props.x)}
+                              y={Number(props.y) - 14}
+                              textAnchor="end"
+                              fontSize={11}
+                              fontWeight={700}
+                              fill={GREEN}
+                              style={{ paintOrder: 'stroke', stroke: '#fff', strokeWidth: 4 }}
+                            >
+                              {text}
+                            </text>
+                          );
+                        }}
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <div style={{ height: 230 }} className="flex items-center justify-center">
+                  <p className="text-sm text-gray-400">No transactions in {getMonthLabel(year, month)}</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Cash Flow Summary — compact rows */}
+          {!loading && (
+            <div className="card-surface p-4">
+              <h3 className="text-sm font-semibold mb-1" style={{ color: INK }}>Cash Flow Summary</h3>
+              <div className="divide-y divide-gray-50">
+                <SummaryRow label="Money In" value={formatCurrency(totalIn)} color={GREEN} />
+                <SummaryRow label="Money Out" value={formatCurrency(totalOut)} color={RED} />
+                <SummaryRow label="Net Profit" value={`${netProfit < 0 ? '−' : ''}${formatCurrency(Math.abs(netProfit))}`} color={netProfit >= 0 ? GREEN : RED} />
+                <SummaryRow label="Closing Balance" value={`${closingBalance < 0 ? '−' : ''}${formatCurrency(Math.abs(closingBalance))}`} />
+              </div>
+            </div>
+          )}
+
+          {/* Top Transactions */}
+          {!loading && (topInflow || topOutflow) && (
+            <div className="card-surface p-4">
+              <h3 className="text-sm font-semibold mb-3" style={{ color: INK }}>Top Transactions</h3>
+              <div className="space-y-2">
+                {topInflow && (
+                  <div className="flex items-center gap-3 rounded-xl p-2.5" style={{ background: GREEN_SOFT }}>
+                    <span className="w-8 h-8 rounded-full flex items-center justify-center shrink-0" style={{ background: '#fff' }}>
+                      <ArrowDown size={14} style={{ color: GREEN }} />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: GREEN }}>Largest Inflow</p>
+                      <p className="text-sm font-semibold text-gray-800 truncate">{topInflow.description}</p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-sm font-bold" style={{ color: GREEN }}>{formatCurrency(topInflow.amount)}</p>
+                      <p className="text-[10px] text-gray-400">{formatDate(topInflow.date)}</p>
+                    </div>
+                  </div>
+                )}
+                {topOutflow && (
+                  <div className="flex items-center gap-3 rounded-xl p-2.5" style={{ background: RED_SOFT }}>
+                    <span className="w-8 h-8 rounded-full flex items-center justify-center shrink-0" style={{ background: '#fff' }}>
+                      <ArrowUp size={14} style={{ color: RED }} />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: RED }}>Largest Outflow</p>
+                      <p className="text-sm font-semibold text-gray-800 truncate">{topOutflow.description}</p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-sm font-bold" style={{ color: RED }}>{formatCurrency(topOutflow.amount)}</p>
+                      <p className="text-[10px] text-gray-400">{formatDate(topOutflow.date)}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Filters */}
+          <div className="space-y-2.5">
+            <div className="flex gap-1.5">
+              {(['all', 'in', 'out'] as const).map((v) => (
+                <button
+                  key={v}
+                  onClick={() => setFilterType(v)}
+                  className={`flex-1 py-2.5 rounded-xl text-xs font-semibold transition-colors ${
+                    filterType === v ? 'text-white' : 'bg-gray-100 text-gray-600 active:bg-gray-200'
+                  }`}
+                  style={filterType === v ? { background: GREEN } : undefined}
+                >
+                  {v === 'all' ? 'All' : v === 'in' ? 'Inflow' : 'Outflow'}
+                </button>
+              ))}
+            </div>
+
+            <div className="relative">
+              <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+              <input
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search transactions..."
+                className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl text-sm text-gray-700 bg-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-green-100 focus:border-green-300"
+              />
+            </div>
+
+            <button
+              onClick={() => setShowMobileFilters(true)}
+              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 active:bg-gray-50 transition-colors"
+            >
+              <SlidersHorizontal size={14} /> Filters{mobileFilterCount > 0 ? ` • ${mobileFilterCount}` : ''}
+            </button>
+          </div>
+
+          {/* Recent Transactions */}
+          <div>
+            <h3 className="text-sm font-bold text-gray-900 mb-2 px-0.5">Recent Transactions</h3>
+            <div className="space-y-2">
+              {loading ? (
+                Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="card-surface p-3.5 flex items-center gap-3 animate-pulse">
+                    <div className="w-10 h-10 rounded-full bg-gray-100 shrink-0" />
+                    <div className="flex-1 space-y-2">
+                      <div className="h-3.5 bg-gray-100 rounded w-2/3" />
+                      <div className="h-3 bg-gray-100 rounded w-1/3" />
+                    </div>
+                  </div>
+                ))
+              ) : filteredTransactions.length === 0 ? (
+                transactions.length === 0 ? (
+                  <div className="card-surface flex flex-col items-center gap-3 py-12 px-4 text-center">
+                    <span className="text-4xl">💸</span>
+                    <p className="text-gray-700 font-semibold">No transactions in {getMonthLabel(year, month)}</p>
+                    <button
+                      onClick={openAddForm}
+                      className="mt-1 inline-flex items-center gap-2 px-4 py-2.5 text-white rounded-lg text-sm font-medium active:opacity-90 transition-opacity"
+                      style={{ background: GREEN }}
+                    >
+                      <Plus size={14} /> Add Transaction
+                    </button>
+                  </div>
+                ) : (
+                  <p className="text-center text-gray-400 text-sm py-10">No transactions match the current filters.</p>
+                )
+              ) : (
+                filteredTransactions.map((t) => (
+                  <div
+                    key={t.id}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setActionTxn(t)}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActionTxn(t); } }}
+                    className="card-surface flex items-center gap-3 p-3.5 active:bg-gray-50 transition-colors cursor-pointer"
+                  >
+                    <span
+                      className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
+                      style={{ background: t.type === 'in' ? GREEN_SOFT : RED_SOFT }}
+                    >
+                      {t.type === 'in'
+                        ? <ArrowDown size={16} style={{ color: GREEN }} />
+                        : <ArrowUp size={16} style={{ color: RED }} />}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-semibold text-gray-800 text-sm truncate">{t.description}</p>
+                      <p className="text-xs text-gray-400 mt-0.5 truncate">{t.category}</p>
+                      <p className="text-[11px] text-gray-400 mt-0.5">{t.payment_mode.toUpperCase()} · {formatDate(t.date)}</p>
+                    </div>
+                    <p className="font-bold text-sm whitespace-nowrap shrink-0" style={{ color: t.type === 'in' ? GREEN : RED }}>
+                      {t.type === 'out' && '−'}{formatCurrency(t.amount)}
+                    </p>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* ================================================================
+            DESKTOP — existing Cash Flow layout, unchanged
+        ================================================================= */}
+        <div className="hidden md:block space-y-6">
 
         {/* Period controls */}
         <div className="flex items-center justify-between gap-3 flex-wrap">
@@ -765,73 +1068,8 @@ export function CashFlow() {
             </table>
           </div>
 
-          {/* Mobile transaction cards */}
-          <div className="md:hidden divide-y divide-gray-50">
-            {loading ? (
-              Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="h-[76px] p-4 animate-pulse">
-                  <div className="h-4 bg-gray-200 rounded w-2/3 mb-2" />
-                  <div className="h-3 bg-gray-100 rounded w-1/3" />
-                </div>
-              ))
-            ) : filteredTransactions.length === 0 ? (
-              transactions.length === 0 ? (
-                <div className="flex flex-col items-center gap-3 py-14 px-4 text-center">
-                  <span className="text-5xl">💸</span>
-                  <p className="text-gray-600 font-semibold text-base">No transactions in {getMonthLabel(year, month)}</p>
-                  <button
-                    onClick={openAddForm}
-                    className="mt-1 inline-flex items-center gap-2 px-4 py-2 text-white rounded-lg text-sm font-medium transition-opacity hover:opacity-90"
-                    style={{ background: GREEN }}
-                  >
-                    <Plus size={14} /> Add Transaction
-                  </button>
-                </div>
-              ) : (
-                <p className="text-center text-gray-400 text-sm py-10">No transactions match the current filters.</p>
-              )
-            ) : (
-              filteredTransactions.map((t) => (
-                <div key={t.id} className="flex items-start gap-3 p-4 active:bg-gray-50 transition-colors">
-                  <span
-                    className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
-                    style={{ background: t.type === 'in' ? GREEN_SOFT : RED_SOFT }}
-                  >
-                    {t.type === 'in'
-                      ? <ArrowDown size={16} style={{ color: GREEN }} />
-                      : <ArrowUp size={16} style={{ color: RED }} />}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-start justify-between gap-2">
-                      <p className="font-semibold text-gray-800 text-sm truncate">{t.description}</p>
-                      <p className="font-bold text-sm whitespace-nowrap shrink-0" style={{ color: t.type === 'in' ? GREEN : RED }}>
-                        {t.type === 'out' && '−'}{formatCurrency(t.amount)}
-                      </p>
-                    </div>
-                    <p className="text-xs text-gray-500 mt-0.5 truncate">{t.category}</p>
-                    <p className="text-xs text-gray-400 mt-0.5">{t.payment_mode.toUpperCase()} · {formatDate(t.date)}</p>
-                    <div className="flex items-center gap-1 mt-2 -ml-2.5">
-                      <button
-                        onClick={() => openEdit(t)}
-                        className="w-11 h-11 flex items-center justify-center rounded-lg text-gray-400 active:bg-green-50 active:text-green-600 transition-colors"
-                        title="Edit transaction"
-                      >
-                        <Pencil size={16} />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(t.id)}
-                        className="w-11 h-11 flex items-center justify-center rounded-lg text-gray-400 active:bg-red-50 active:text-red-500 transition-colors"
-                        title="Delete transaction"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
         </Card>
+        </div>
       </div>
 
       {/* Add / Edit Transaction Modal */}
@@ -980,6 +1218,118 @@ export function CashFlow() {
           </Button>
         </form>
       </Modal>
+
+      {/* Mobile filters bottom sheet */}
+      <BottomSheet open={showMobileFilters} onClose={() => setShowMobileFilters(false)} title="Filters">
+        <div className="space-y-4">
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium text-gray-700">Category</label>
+            <select
+              value={filterCategory}
+              onChange={(e) => setFilterCategory(e.target.value)}
+              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-green-100"
+            >
+              <option value="">All Categories</option>
+              {ALL_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium text-gray-700">Payment Mode</label>
+            <select
+              value={filterMode}
+              onChange={(e) => setFilterMode(e.target.value)}
+              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-green-100"
+            >
+              <option value="">All Modes</option>
+              {PAYMENT_MODES.map((pm) => <option key={pm.value} value={pm.value}>{pm.label}</option>)}
+            </select>
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium text-gray-700">Sort</label>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as SortBy)}
+              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-green-100"
+            >
+              <option value="date-desc">Date: Newest First</option>
+              <option value="date-asc">Date: Oldest First</option>
+              <option value="amount-desc">Amount: Highest First</option>
+              <option value="amount-asc">Amount: Lowest First</option>
+            </select>
+          </div>
+          {hasActiveFilters && (
+            <button
+              onClick={resetFilters}
+              className="flex items-center gap-1 text-xs font-medium"
+              style={{ color: GREEN }}
+            >
+              <X size={12} /> Reset all filters
+            </button>
+          )}
+          <Button onClick={() => setShowMobileFilters(false)} className="w-full" style={{ background: GREEN }}>
+            Apply Filters
+          </Button>
+        </div>
+      </BottomSheet>
+
+      {/* Transaction details / actions bottom sheet */}
+      <BottomSheet open={!!actionTxn} onClose={() => setActionTxn(null)} title="Transaction Details">
+        {actionTxn && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <span
+                className="w-11 h-11 rounded-full flex items-center justify-center shrink-0"
+                style={{ background: actionTxn.type === 'in' ? GREEN_SOFT : RED_SOFT }}
+              >
+                {actionTxn.type === 'in'
+                  ? <ArrowDown size={18} style={{ color: GREEN }} />
+                  : <ArrowUp size={18} style={{ color: RED }} />}
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="font-semibold text-gray-900 truncate">{actionTxn.description}</p>
+                <p className="text-xs text-gray-400">{actionTxn.category}</p>
+              </div>
+            </div>
+            <div className="rounded-xl bg-gray-50 divide-y divide-gray-100">
+              <div className="flex items-center justify-between px-3.5 py-2.5">
+                <span className="text-xs text-gray-500">Amount</span>
+                <span className="text-sm font-bold" style={{ color: actionTxn.type === 'in' ? GREEN : RED }}>
+                  {actionTxn.type === 'out' && '−'}{formatCurrency(actionTxn.amount)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between px-3.5 py-2.5">
+                <span className="text-xs text-gray-500">Date</span>
+                <span className="text-sm font-semibold text-gray-700">{formatDate(actionTxn.date)}</span>
+              </div>
+              <div className="flex items-center justify-between px-3.5 py-2.5">
+                <span className="text-xs text-gray-500">Payment Mode</span>
+                <span className="text-sm font-semibold text-gray-700">{actionTxn.payment_mode.toUpperCase()}</span>
+              </div>
+              {actionTxn.reference && (
+                <div className="flex items-center justify-between px-3.5 py-2.5">
+                  <span className="text-xs text-gray-500">Reference</span>
+                  <span className="text-sm font-semibold text-gray-700">{actionTxn.reference}</span>
+                </div>
+              )}
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => { const t = actionTxn; setActionTxn(null); openEdit(t); }}
+                className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold border border-gray-200 text-gray-700 active:bg-gray-50 transition-colors"
+              >
+                <Pencil size={15} /> Edit
+              </button>
+              <button
+                onClick={() => { const id = actionTxn.id; setActionTxn(null); handleDelete(id); }}
+                className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold text-white active:opacity-90 transition-opacity"
+                style={{ background: RED }}
+              >
+                <Trash2 size={15} /> Delete
+              </button>
+            </div>
+          </div>
+        )}
+      </BottomSheet>
     </div>
   );
 }
