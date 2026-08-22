@@ -123,10 +123,7 @@ export function Dashboard() {
   const isCurrentMonth = year === today.getFullYear() && month === today.getMonth();
   const monthLabel = getMonthLabel(year, month);
 
-  const collectedChartData = monthlyData.map((m, i) => ({
-    month: m.month,
-    collected: trends.collected[i] ?? 0,
-  }));
+  const collectedChartData = trends.collectedDaily;
 
   return (
     <div className="px-4 md:px-8 py-5 md:py-8 max-w-[1500px] mx-auto">
@@ -200,7 +197,7 @@ export function Dashboard() {
                   <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Total Collected</p>
                   <div className="flex items-end gap-3 mt-1">
                     <span className="text-3xl font-extrabold text-gray-900" style={{ fontFamily: '"Nunito", ui-rounded, sans-serif', letterSpacing: '-0.03em' }}>
-                      {formatCurrency(trends.collectedPeriodTotal)}
+                      {formatCurrency(stats.totalCollected)}
                     </span>
                     {trends.collectedDelta != null && (
                       <span
@@ -216,7 +213,7 @@ export function Dashboard() {
                   </div>
                 </div>
                 <span className="text-[10px] bg-gray-50 border border-gray-100 text-gray-400 px-2 py-0.5 rounded-full">
-                  Last 6 months
+                  {monthLabel}
                 </span>
               </div>
 
@@ -230,7 +227,7 @@ export function Dashboard() {
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} />
-                    <XAxis dataKey="month" tick={{ fill: '#9ca3af', fontSize: 11 }} axisLine={false} tickLine={false} />
+                    <XAxis dataKey="label" tick={{ fill: '#9ca3af', fontSize: 11 }} axisLine={false} tickLine={false} minTickGap={24} />
                     <YAxis
                       tick={{ fill: '#9ca3af', fontSize: 11 }}
                       axisLine={false}
@@ -247,7 +244,7 @@ export function Dashboard() {
                 </ResponsiveContainer>
               ) : (
                 <div className="flex items-center justify-center h-[240px]">
-                  <p className="text-sm text-gray-400">No collections recorded for this period</p>
+                  <p className="text-sm text-gray-400">No collections recorded this month</p>
                 </div>
               )}
             </div>

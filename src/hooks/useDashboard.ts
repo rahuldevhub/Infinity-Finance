@@ -3,15 +3,19 @@ import { supabase } from '../lib/supabase';
 import type { DashboardStats, MonthlyData } from '../types';
 import { getMonthRange } from '../utils/formatters';
 
+export interface DashboardDayPoint {
+  day: number;
+  label: string;
+  collected: number;
+}
+
 export interface DashboardTrends {
-  /** Actual money collected (Payment Receipts), by month — cash-basis. */
-  collected: number[];
+  /** Cumulative Payment Receipt collections for the selected month, one point per day. */
+  collectedDaily: DashboardDayPoint[];
   sales: number[];
   gst: number[];
   expenses: number[];
-  /** Sum of `collected` across the whole selected period (matches the chart's "Last N months"). */
-  collectedPeriodTotal: number;
-  /** % change of collectedPeriodTotal vs the immediately preceding period of the same length. */
+  /** % change of the selected month's total collected vs the immediately preceding month. */
   collectedDelta: number | null;
   salesDelta: number | null;
   gstDelta: number | null;
@@ -19,8 +23,7 @@ export interface DashboardTrends {
 }
 
 const EMPTY_TRENDS: DashboardTrends = {
-  collected: [], sales: [], gst: [], expenses: [],
-  collectedPeriodTotal: 0,
+  collectedDaily: [], sales: [], gst: [], expenses: [],
   collectedDelta: null, salesDelta: null, gstDelta: null, expensesDelta: null,
 };
 
@@ -31,6 +34,12 @@ function pctDelta(series: number[]): number | null {
   const cur = series[series.length - 1];
   if (!prev) return null;
   return ((cur - prev) / prev) * 100;
+}
+
+// Day-of-month from a 'YYYY-MM-DD' string without going through Date/UTC parsing
+// (avoids the off-by-one timezone shift documented in utils/formatters.ts).
+function dayOfMonth(dateStr: string): number {
+  return Number(dateStr.split('-')[2]);
 }
 
 export function useDashboard(year: number, month: number) {
@@ -80,9 +89,18 @@ export function useDashboard(year: number, month: number) {
       // Actual money collected this month — Payment Receipts, cash-basis
       const { data: receipts } = await supabase
         .from('payment_receipts')
-        .select('amount_received')
+        .select('date, amount_received')
         .gte('date', start)
         .lte('date', end);
+
+      // Previous month's collections — for the month-over-month % delta
+      const prevMonthDate = new Date(year, month - 1, 1);
+      const { start: prevMonthStart, end: prevMonthEnd } = getMonthRange(prevMonthDate.getFullYear(), prevMonthDate.getMonth());
+      const { data: prevMonthReceipts } = await supabase
+        .from('payment_receipts')
+        .select('amount_received')
+        .gte('date', prevMonthStart)
+        .lte('date', prevMonthEnd);
 
       const gstInv = gstInvoices || [];
       const allInv = allInvoices || [];
@@ -100,6 +118,29 @@ export function useDashboard(year: number, month: number) {
         .reduce((s, e) => s + Number(e.gst_amount), 0);
 
       const totalCollected = rcpts.reduce((s, r) => s + Number(r.amount_received), 0);
+
+      const prevMonthCollected = (prevMonthReceipts || []).reduce((s, r) => s + Number(r.amount_received), 0);
+      const collectedDelta = prevMonthCollected > 0 ? ((totalCollected - prevMonthCollected) / prevMonthCollected) * 100 : null;
+
+      // Cumulative collections per day for the selected month (chart trend). Cap at "today"
+      // when viewing the current real-world month, since later days have no data yet.
+      const now = new Date();
+      const daysInSelectedMonth = new Date(year, month + 1, 0).getDate();
+      const isViewingCurrentMonth = year === now.getFullYear() && month === now.getMonth();
+      const lastDay = isViewingCurrentMonth ? Math.min(daysInSelectedMonth, now.getDate()) : daysInSelectedMonth;
+
+      const perDay: Record<number, number> = {};
+      rcpts.forEach((r) => {
+        const day = dayOfMonth(r.date);
+        perDay[day] = (perDay[day] || 0) + Number(r.amount_received);
+      });
+
+      let runningCollected = 0;
+      const collectedDaily = Array.from({ length: lastDay }, (_, idx) => {
+        const day = idx + 1;
+        runningCollected += perDay[day] ?? 0;
+        return { day, label: String(day), collected: runningCollected };
+      });
 
       // Pending across all invoice types
       const pendingInvoices = allInv.filter((i) => i.payment_status !== 'paid');
@@ -124,16 +165,15 @@ export function useDashboard(year: number, month: number) {
         .limit(5);
       setRecentInvoices(recent || []);
 
-      // Monthly data + trend series for the selected chart period (currently "Last 6 months" —
-      // bump PERIOD_MONTHS if a period selector is ever added), oldest → newest.
-      const PERIOD_MONTHS = 6;
+      // Monthly data + trend series (last 6 months) for the "Sales vs Expenses" chart —
+      // unrelated to the Total Collected card, which is day-by-day within the current month.
+      const TREND_MONTHS = 6;
       const monthly: MonthlyData[] = [];
       const salesSeries: number[] = [];
       const gstSeries: number[] = [];
-      const collectedSeries: number[] = [];
       const expensesSeries: number[] = [];
 
-      for (let i = PERIOD_MONTHS - 1; i >= 0; i--) {
+      for (let i = TREND_MONTHS - 1; i >= 0; i--) {
         const d = new Date(year, month - i, 1);
         const y = d.getFullYear();
         const m = d.getMonth();
@@ -151,23 +191,14 @@ export function useDashboard(year: number, month: number) {
           .gte('date', mStart)
           .lte('date', mEnd);
 
-        // Actual money collected that month — Payment Receipts, cash-basis
-        const { data: mRcpts } = await supabase
-          .from('payment_receipts')
-          .select('amount_received')
-          .gte('date', mStart)
-          .lte('date', mEnd);
-
         const rows = mInv || [];
         const gstRows = rows.filter((r) => r.invoice_type !== 'non_gst');
         const mSales = gstRows.reduce((s, r) => s + Number(r.taxable_value), 0);
         const mGst = gstRows.reduce((s, r) => s + Number(r.cgst_amount) + Number(r.sgst_amount) + Number(r.igst_amount), 0);
         const mExpenses = (mExp || []).reduce((s, e) => s + Number(e.total_amount), 0);
-        const mCollected = (mRcpts || []).reduce((s, r) => s + Number(r.amount_received), 0);
 
         salesSeries.push(mSales);
         gstSeries.push(mGst);
-        collectedSeries.push(mCollected);
         expensesSeries.push(mExpenses);
 
         monthly.push({
@@ -178,30 +209,11 @@ export function useDashboard(year: number, month: number) {
       }
       setMonthlyData(monthly);
 
-      // Period-over-period comparison for the headline: current N-month total vs the
-      // immediately preceding N-month block (not a single-month delta — see collectedDelta).
-      const collectedPeriodTotal = collectedSeries.reduce((s, v) => s + v, 0);
-      const earliestMonth = new Date(year, month - (PERIOD_MONTHS - 1), 1);
-      const prevPeriodEnd = new Date(earliestMonth.getFullYear(), earliestMonth.getMonth() - 1, 1);
-      const prevPeriodStart = new Date(prevPeriodEnd.getFullYear(), prevPeriodEnd.getMonth() - (PERIOD_MONTHS - 1), 1);
-      const { start: prevStart } = getMonthRange(prevPeriodStart.getFullYear(), prevPeriodStart.getMonth());
-      const { end: prevEnd } = getMonthRange(prevPeriodEnd.getFullYear(), prevPeriodEnd.getMonth());
-
-      const { data: prevPeriodReceipts } = await supabase
-        .from('payment_receipts')
-        .select('amount_received')
-        .gte('date', prevStart)
-        .lte('date', prevEnd);
-
-      const prevPeriodTotal = (prevPeriodReceipts || []).reduce((s, r) => s + Number(r.amount_received), 0);
-      const collectedDelta = prevPeriodTotal > 0 ? ((collectedPeriodTotal - prevPeriodTotal) / prevPeriodTotal) * 100 : null;
-
       setTrends({
-        collected: collectedSeries,
+        collectedDaily,
         sales: salesSeries,
         gst: gstSeries,
         expenses: expensesSeries,
-        collectedPeriodTotal,
         collectedDelta,
         salesDelta: pctDelta(salesSeries),
         gstDelta: pctDelta(gstSeries),
