@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
+import { scopeDashboardRows } from '../domain/dashboardSourceScope';
+import { isMissingCashTransactionCompanyColumn, withoutCompany } from '../domain/cashTransactionCompatibility';
 
 export interface CashTransaction {
   id: string;
@@ -11,6 +13,7 @@ export interface CashTransaction {
   payment_mode: 'cash' | 'bank' | 'upi' | 'card' | 'razorpay';
   reference: string | null;
   sub_brand: string | null;
+  company: import('../domain/company').CompanyCode | null;
   created_at: string;
   created_by: string;
 }
@@ -19,6 +22,7 @@ interface Filters {
   start?: string;
   end?: string;
   type?: 'in' | 'out';
+  company?: import('../domain/company').CompanyCode;
 }
 
 export function useCashFlow(filters?: Filters) {
@@ -33,16 +37,22 @@ export function useCashFlow(filters?: Filters) {
     if (filters?.end) q = q.lte('date', filters.end);
     if (filters?.type) q = q.eq('type', filters.type);
     const { data } = await q;
-    setTransactions(data || []);
+    const periodRows = (data || []) as CashTransaction[];
+    setTransactions(filters?.company ? scopeDashboardRows(periodRows, filters.company) : periodRows);
 
     // Calculate opening balance: sum of all transactions before the start date
     if (filters?.start) {
       const { data: prevData } = await supabase
         .from('cash_transactions')
-        .select('type, amount')
+        .select('*')
         .lt('date', filters.start);
-      const bal = (prevData || []).reduce((sum, t) => {
-        return sum + (t.type === 'in' ? t.amount : -t.amount);
+      const rawPreviousRows = (prevData || []) as CashTransaction[];
+      const previousRows = filters?.company
+        ? scopeDashboardRows(rawPreviousRows, filters.company)
+        : rawPreviousRows;
+      const bal = previousRows.reduce((sum, t) => {
+        const amount = Number(t.amount || 0);
+        return sum + (t.type === 'in' ? amount : -amount);
       }, 0);
       setOpeningBalance(bal);
     } else {
@@ -50,24 +60,30 @@ export function useCashFlow(filters?: Filters) {
     }
 
     setLoading(false);
-  }, [filters?.start, filters?.end, filters?.type]);
+  }, [filters?.start, filters?.end, filters?.type, filters?.company]);
 
   useEffect(() => { fetch(); }, [fetch]);
 
   async function createTransaction(tx: Omit<CashTransaction, 'id' | 'created_at'>) {
-    const { error } = await supabase.from('cash_transactions').insert([tx]);
+    let { error } = await supabase.from('cash_transactions').insert([tx]);
+    if (isMissingCashTransactionCompanyColumn(error)) {
+      ({ error } = await supabase.from('cash_transactions').insert([withoutCompany(tx)]));
+    }
     if (error) {
       console.error('Supabase error:', error);
-      throw error;
+      throw new Error(error.message || 'Failed to create transaction.');
     }
     await fetch();
   }
 
   async function updateTransaction(id: string, data: Omit<CashTransaction, 'id' | 'created_at'>) {
-    const { error } = await supabase.from('cash_transactions').update({ ...data }).eq('id', id);
+    let { error } = await supabase.from('cash_transactions').update({ ...data }).eq('id', id);
+    if (isMissingCashTransactionCompanyColumn(error)) {
+      ({ error } = await supabase.from('cash_transactions').update(withoutCompany(data)).eq('id', id));
+    }
     if (error) {
       console.error('Supabase error:', error);
-      throw error;
+      throw new Error(error.message || 'Failed to update transaction.');
     }
     await fetch();
   }
@@ -76,7 +92,7 @@ export function useCashFlow(filters?: Filters) {
     const { error } = await supabase.from('cash_transactions').delete().eq('id', id);
     if (error) {
       console.error('Supabase error:', error);
-      throw error;
+      throw new Error(error.message || 'Failed to delete transaction.');
     }
     await fetch();
   }

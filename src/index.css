@@ -24,12 +24,33 @@ body {
   font-family: 'Geist', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: #f8fafc;
+  background-color: #f6f8fb;
 }
 
 /* Floating workspace shell — clean neutral background */
 .app-shell {
-  background: #f8fafc;
+  background: #f6f8fb;
+}
+
+@keyframes ledgerStatusPulse {
+  0%, 100% { opacity: 0; transform: scale(.8); }
+  50% { opacity: .65; transform: scale(1.18); }
+}
+
+.ledger-status-pulse {
+  animation: ledgerStatusPulse 2.8s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ledger-status-pulse {
+    animation: none;
+  }
+
+  .transition-all,
+  .transition-transform,
+  .transition-colors {
+    transition-duration: 0.01ms !important;
+  }
 }
 
 /* Borderless layered-shadow surface (Linear/Stripe style) */
@@ -99,3 +120,8 @@ body {
 /* Hide scrollbar for mobile nav */
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+@keyframes slideIn {
+  from { transform: translateX(100%); opacity: 0.6; }
+  to { transform: translateX(0); opacity: 1; }
+}

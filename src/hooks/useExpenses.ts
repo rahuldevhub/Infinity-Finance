@@ -7,6 +7,7 @@ interface ExpenseFilters {
   end?: string;
   category?: string;
   is_itc_eligible?: boolean;
+  company?: import('../domain/company').CompanyCode;
 }
 
 export function useExpenses(filters?: ExpenseFilters) {
@@ -27,6 +28,7 @@ export function useExpenses(filters?: ExpenseFilters) {
       if (filters?.category) query = query.eq('category', filters.category);
       if (filters?.is_itc_eligible !== undefined)
         query = query.eq('is_itc_eligible', filters.is_itc_eligible);
+      if (filters?.company) query = query.eq('company', filters.company);
 
       const { data, error } = await query;
       if (error) throw error;
@@ -36,7 +38,7 @@ export function useExpenses(filters?: ExpenseFilters) {
     } finally {
       setLoading(false);
     }
-  }, [filters?.start, filters?.end, filters?.category, filters?.is_itc_eligible]);
+  }, [filters?.start, filters?.end, filters?.category, filters?.is_itc_eligible, filters?.company]);
 
   useEffect(() => { fetchExpenses(); }, [fetchExpenses]);
 

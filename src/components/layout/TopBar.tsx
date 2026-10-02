@@ -19,6 +19,7 @@ const SEARCH_TARGETS: { label: string; to: string; kind: 'Page' | 'Create' }[] =
   { label: 'Payment Receipts', to: '/receipts', kind: 'Page' },
   { label: 'Expenses', to: '/expenses', kind: 'Page' },
   { label: 'Cash Flow', to: '/cash-flow', kind: 'Page' },
+  { label: 'Cash Flow Analysis', to: '/cash-flow-analysis', kind: 'Page' },
   { label: 'GST Summary', to: '/gst-summary', kind: 'Page' },
   { label: 'GST Filing', to: '/gst-filing', kind: 'Page' },
   { label: 'Settings', to: '/settings', kind: 'Page' },
@@ -151,8 +152,8 @@ function ProfileMenu() {
 
 export function TopBar({ title, subtitle, actions }: TopBarProps) {
   return (
-    <header className="bg-white border-b border-gray-200 px-5 md:px-8 py-4 flex items-center gap-4 sticky top-0 z-30">
-      <div className="flex items-center gap-3 min-w-0 flex-1 md:flex-none">
+    <header className="sticky top-0 z-30 flex min-w-0 flex-wrap items-center gap-3 border-b border-gray-200 bg-white px-5 py-4 md:px-8 2xl:flex-nowrap">
+      <div className="flex min-w-0 flex-1 items-center gap-3">
         <div className="md:hidden w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center shrink-0">
           <span className="text-white font-bold text-xs">IG</span>
         </div>
@@ -162,12 +163,12 @@ export function TopBar({ title, subtitle, actions }: TopBarProps) {
         </div>
       </div>
 
-      <div className="hidden md:flex flex-1 justify-center px-2">
+      <div className="hidden min-w-0 flex-1 justify-center px-2 2xl:flex">
         <GlobalSearch />
       </div>
 
-      <div className="flex items-center gap-1 shrink-0">
-        {actions && <div className="flex items-center gap-2 mr-1">{actions}</div>}
+      <div className="flex w-full min-w-0 items-center justify-end gap-1 2xl:w-auto 2xl:shrink-0">
+        {actions && <div className="mr-1 min-w-0 flex-1 2xl:flex-none">{actions}</div>}
         <button
           className="hidden sm:flex w-9 h-9 items-center justify-center rounded-xl text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
           title="Help"

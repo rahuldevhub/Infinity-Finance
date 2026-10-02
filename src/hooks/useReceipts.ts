@@ -4,6 +4,7 @@ import { generateDocNumber } from '../utils/documentNumber';
 
 export type { PaymentReceipt } from '../types';
 import type { PaymentReceipt } from '../types';
+import { voidProjectPayment } from '../services/projectPayments';
 
 export type PaymentMode = 'cash' | 'bank' | 'upi' | 'card' | 'razorpay' | 'cheque';
 
@@ -16,6 +17,9 @@ interface Filters {
 export function useReceipts(filters?: Filters) {
   const [receipts, setReceipts] = useState<PaymentReceipt[]>([]);
   const [loading, setLoading] = useState(true);
+  const filterStart = filters?.start;
+  const filterEnd = filters?.end;
+  const filterBrand = filters?.sub_brand;
 
   const fetch = useCallback(async () => {
     setLoading(true);
@@ -23,15 +27,18 @@ export function useReceipts(filters?: Filters) {
       .from('payment_receipts')
       .select('*, client:clients(name, email, address)')
       .order('date', { ascending: false });
-    if (filters?.start) q = q.gte('date', filters.start);
-    if (filters?.end) q = q.lte('date', filters.end);
-    if (filters?.sub_brand) q = q.eq('sub_brand', filters.sub_brand);
+    if (filterStart) q = q.gte('date', filterStart);
+    if (filterEnd) q = q.lte('date', filterEnd);
+    if (filterBrand) q = q.eq('sub_brand', filterBrand);
     const { data } = await q;
     setReceipts((data || []) as PaymentReceipt[]);
     setLoading(false);
-  }, [filters?.start, filters?.end, filters?.sub_brand]);
+  }, [filterBrand, filterEnd, filterStart]);
 
-  useEffect(() => { fetch(); }, [fetch]);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Fetch the active receipt filter when it changes.
+    void fetch();
+  }, [fetch]);
 
   async function createReceipt(r: Omit<PaymentReceipt, 'id' | 'created_at' | 'client'>) {
     const { data, error } = await supabase.from('payment_receipts').insert([r]).select().single();
@@ -46,7 +53,13 @@ export function useReceipts(filters?: Filters) {
     await fetch();
   }
 
-  async function deleteReceipt(id: string) {
+  async function deleteReceipt(id: string, voidReason = 'Voided from payment receipts') {
+    const receipt = receipts.find((item) => item.id === id);
+    if (receipt?.project_id && receipt.reconciliation_managed) {
+      await voidProjectPayment(id, voidReason);
+      await fetch();
+      return;
+    }
     const { error } = await supabase.from('payment_receipts').delete().eq('id', id);
     if (error) throw error;
     await fetch();
@@ -55,6 +68,6 @@ export function useReceipts(filters?: Filters) {
   return { receipts, loading, refetch: fetch, createReceipt, updateReceipt, deleteReceipt };
 }
 
-export async function generateReceiptNumber(): Promise<string> {
-  return generateDocNumber('RCP');
+export async function generateReceiptNumber(paymentDate?: string): Promise<string> {
+  return generateDocNumber('RCP', paymentDate);
 }

@@ -56,15 +56,20 @@ export function ProformaInvoices() {
   const paidCount   = proformas.filter(p => p.status === 'paid').length;
 
   async function handleDownloadPDF(p: ProformaInvoice) {
-    if (!settings) return;
+    if (!settings || !p.proforma_number || !p.date) return;
     const clientName = (p.client?.name || p.client_name_override || '').replace(/[^a-zA-Z0-9]/g, '');
     await downloadPDF(
-      <ProformaPDF proforma={p} businessSettings={settings} />,
-      `Proforma-${p.proforma_number}${clientName ? '-' + clientName : ''}.pdf`
+      <ProformaPDF proforma={p} businessSettings={settings} template="modern" />,
+      `Proforma-${p.proforma_number}${clientName ? '-' + clientName : ''}.pdf`,
+      <ProformaPDF proforma={p} businessSettings={settings} template="legacy" />,
     );
   }
 
   async function handleMarkPaid(p: ProformaInvoice) {
+    if (p.project_id) {
+      navigate(`/receipts/new?project_id=${p.project_id}&proforma_id=${p.id}`);
+      return;
+    }
     await updateProforma(p.id, { status: 'paid', payment_status: 'paid' });
   }
 
@@ -160,8 +165,8 @@ export function ProformaInvoices() {
                   </tr>
                 ) : proformas.map(p => (
                   <tr key={p.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 font-semibold text-blue-700">{p.proforma_number}</td>
-                    <td className="px-4 py-3 text-gray-600">{formatDate(p.date)}</td>
+                    <td className="px-4 py-3 font-semibold text-blue-700">{p.proforma_number || 'Not issued'}</td>
+                    <td className="px-4 py-3 text-gray-600">{p.date ? formatDate(p.date) : 'Not issued'}</td>
                     <td className="px-4 py-3 text-gray-900">
                       {p.client?.name || p.client_name_override || <span className="text-gray-400 italic">Unknown</span>}
                     </td>
@@ -173,7 +178,8 @@ export function ProformaInvoices() {
                     <td className="px-4 py-3 text-center">
                       <div className="relative inline-block">
                         <button
-                          onClick={() => setStatusDropdown(statusDropdown === p.id ? null : p.id)}
+                          onClick={() => !p.is_project_proforma && setStatusDropdown(statusDropdown === p.id ? null : p.id)}
+                          disabled={Boolean(p.is_project_proforma)}
                           className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium cursor-pointer ${
                             p.status === 'paid' ? 'bg-green-100 text-green-700' :
                             p.status === 'sent' ? 'bg-blue-100 text-blue-700' :
@@ -187,7 +193,7 @@ export function ProformaInvoices() {
                           <>
                             <div className="fixed inset-0 z-10" onClick={() => setStatusDropdown(null)} />
                             <div className="absolute left-1/2 -translate-x-1/2 top-full mt-1 z-20 bg-white border border-gray-200 rounded-lg shadow-lg py-1 min-w-[110px]">
-                              {(['draft', 'sent', 'paid', 'cancelled'] as const).map(s => (
+                              {(p.project_id ? (['draft', 'sent', 'cancelled'] as const) : (['draft', 'sent', 'paid', 'cancelled'] as const)).map(s => (
                                 <button
                                   key={s}
                                   onClick={async () => {
@@ -216,29 +222,25 @@ export function ProformaInvoices() {
                         <button onClick={() => setViewItem(p)} className="p-1.5 rounded hover:bg-gray-100 text-gray-500" title="View">
                           <Eye size={15} />
                         </button>
-                        <button onClick={() => handleDownloadPDF(p)} className="p-1.5 rounded hover:bg-gray-100 text-gray-500 disabled:opacity-50" disabled={pdfLoading} title="Download PDF">
+                        <button onClick={() => handleDownloadPDF(p)} className="p-1.5 rounded hover:bg-gray-100 text-gray-500 disabled:opacity-50" disabled={pdfLoading || !p.proforma_number || !p.date} title={p.proforma_number ? 'Download PDF' : 'Issue this proforma from the Client Workspace first'}>
                           <Download size={15} />
                         </button>
                         {p.status === 'sent' && (
-                          <button onClick={() => handleMarkPaid(p)} className="p-1.5 rounded hover:bg-green-50 text-green-600" title="Mark as Paid">
-                            <CheckCircle size={15} />
+                          <button onClick={() => handleMarkPaid(p)} className="p-1.5 rounded hover:bg-green-50 text-green-600" title={p.project_id ? 'Record project payment' : 'Mark as Paid'}>
+                            {p.project_id ? <Receipt size={15} /> : <CheckCircle size={15} />}
                           </button>
                         )}
                         {p.status === 'paid' && (
                           <button
-                            onClick={() => navigate(`/receipts/new?proforma_id=${p.id}&amount=${p.total_amount}&towards=${encodeURIComponent(p.proforma_number)}&client_id=${p.client_id || ''}&client_name=${encodeURIComponent(p.client?.name || p.client_name_override || '')}&sub_brand=${encodeURIComponent(p.sub_brand)}`)}
+                            onClick={() => navigate(`/receipts/new?proforma_id=${p.id}&amount=${p.total_amount}&towards=${encodeURIComponent(p.proforma_number || '')}&client_id=${p.client_id || ''}&client_name=${encodeURIComponent(p.client?.name || p.client_name_override || '')}&sub_brand=${encodeURIComponent(p.sub_brand)}`)}
                             className="p-1.5 rounded hover:bg-blue-50 text-blue-500"
                             title="Generate Receipt"
                           >
                             <Receipt size={15} />
                           </button>
                         )}
-                        <button onClick={() => navigate(`/proforma/${p.id}/edit`)} className="p-1.5 rounded hover:bg-blue-50 text-blue-500" title="Edit">
-                          <Edit size={15} />
-                        </button>
-                        <button onClick={() => setConfirmDelete(p.id)} className="p-1.5 rounded hover:bg-red-50 text-red-500" title="Delete">
-                          <Trash2 size={15} />
-                        </button>
+                        {!p.is_project_proforma && <button onClick={() => navigate(`/proforma/${p.id}/edit`)} className="p-1.5 rounded hover:bg-blue-50 text-blue-500" title="Edit"><Edit size={15} /></button>}
+                        {!p.is_project_proforma && <button onClick={() => setConfirmDelete(p.id)} className="p-1.5 rounded hover:bg-red-50 text-red-500" title="Delete"><Trash2 size={15} /></button>}
                       </div>
                     </td>
                   </tr>
@@ -251,7 +253,7 @@ export function ProformaInvoices() {
 
       {/* View Modal */}
       {viewItem && (
-        <Modal isOpen={!!viewItem} onClose={() => setViewItem(null)} title={`Proforma ${viewItem.proforma_number}`} size="lg">
+        <Modal isOpen={!!viewItem} onClose={() => setViewItem(null)} title={`Proforma ${viewItem.proforma_number || 'Draft · Not issued'}`} size="lg">
           <div className="space-y-4 text-sm">
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -261,7 +263,7 @@ export function ProformaInvoices() {
               </div>
               <div>
                 <p className="text-xs text-gray-500">Date</p>
-                <p className="font-semibold">{formatDate(viewItem.date)}</p>
+                <p className="font-semibold">{viewItem.date ? formatDate(viewItem.date) : 'Not issued'}</p>
                 {viewItem.due_date && (
                   <>
                     <p className="text-xs text-gray-500 mt-1">Due Date</p>
@@ -304,7 +306,11 @@ export function ProformaInvoices() {
 
             <div className="flex justify-end">
               <div className="w-60 space-y-2 text-sm">
-                <div className="flex justify-between"><span className="text-gray-500">Subtotal</span><span>{formatCurrency(viewItem.taxable_value)}</span></div>
+                <div className="flex justify-between"><span className="text-gray-500">Subtotal</span><span>{formatCurrency(viewItem.taxable_value + Number(viewItem.discount_amount || 0))}</span></div>
+                {Number(viewItem.discount_amount || 0) > 0 && (
+                  <div className="flex justify-between"><span className="text-gray-500">{viewItem.discount_type === 'percent' ? `Discount (${viewItem.discount_value}%)` : 'Discount'}</span><span className="text-red-600">-{formatCurrency(Number(viewItem.discount_amount || 0))}</span></div>
+                )}
+                <div className="flex justify-between"><span className="text-gray-500">Taxable Value</span><span>{formatCurrency(viewItem.taxable_value)}</span></div>
                 {viewItem.include_gst && !viewItem.is_igst && (
                   <>
                     <div className="flex justify-between"><span className="text-gray-500">CGST ({viewItem.gst_rate / 2}%)</span><span>{formatCurrency(viewItem.cgst_amount)}</span></div>
@@ -328,7 +334,7 @@ export function ProformaInvoices() {
             )}
 
             <div className="flex gap-2 pt-2">
-              {settings && (
+              {settings && viewItem.proforma_number && viewItem.date && (
                 <Button onClick={() => handleDownloadPDF(viewItem)} disabled={pdfLoading}>
                   <Download size={16} /> {pdfLoading ? 'Generating…' : 'Download PDF'}
                 </Button>

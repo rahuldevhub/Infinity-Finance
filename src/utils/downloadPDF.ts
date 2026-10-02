@@ -1,10 +1,43 @@
 import { pdf } from '@react-pdf/renderer'
 import type { ReactElement } from 'react'
 import { registerPDFFonts } from './pdfFonts'
+import { withFallback } from './withFallback'
+
+export interface PDFGenerationResult {
+  blob: Blob
+  usedFallback: boolean
+}
+
+async function renderPDF(document: ReactElement): Promise<Blob> {
+  const pdfInstance = pdf()
+  pdfInstance.updateContainer(document)
+  const blob = await pdfInstance.toBlob()
+  if (!blob || blob.size === 0) throw new Error('Generated PDF blob is empty')
+  return blob
+}
+
+export async function generatePDFBlob(
+  document: ReactElement,
+  fallbackDocument?: ReactElement
+): Promise<PDFGenerationResult> {
+  registerPDFFonts()
+  const result = await withFallback(
+    () => renderPDF(document),
+    fallbackDocument
+      ? async () => {
+          console.warn('Primary PDF template failed; generating the legacy fallback.')
+          return renderPDF(fallbackDocument)
+        }
+      : undefined
+  )
+
+  return { blob: result.value, usedFallback: result.usedFallback }
+}
 
 export async function downloadPDF(
   document: ReactElement,
-  filename: string
+  filename: string,
+  fallbackDocument?: ReactElement
 ): Promise<void> {
   registerPDFFonts()
 
@@ -15,15 +48,8 @@ export async function downloadPDF(
       try {
         console.log('Starting PDF generation for:', safeFilename)
 
-        const pdfInstance = pdf()
-        pdfInstance.updateContainer(document)
-
-        const blob = await pdfInstance.toBlob()
-        console.log('PDF blob generated, size:', blob.size)
-
-        if (!blob || blob.size === 0) {
-          throw new Error('Generated PDF blob is empty')
-        }
+        const { blob, usedFallback } = await generatePDFBlob(document, fallbackDocument)
+        console.log('PDF blob generated, size:', blob.size, 'template:', usedFallback ? 'legacy fallback' : 'primary')
 
         const url = URL.createObjectURL(blob)
         const link = window.document.createElement('a')

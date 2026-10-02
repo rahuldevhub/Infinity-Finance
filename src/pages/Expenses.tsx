@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { Plus, Trash2, ExternalLink, Pencil } from 'lucide-react';
 import { useExpenses } from '../hooks/useExpenses';
 import { useAuth } from '../hooks/useAuth';
+import { useWorkspace } from '../context/WorkspaceContext';
+import { isCompanyCode } from '../domain/company';
 import { EXPENSE_CATEGORIES, GST_RATES } from '../types';
 import type { Expense } from '../types';
 import { TopBar } from '../components/layout/TopBar';
@@ -14,6 +16,8 @@ import { formatCurrency, formatDate, getMonthRange, toLocalDateString } from '..
 
 export function Expenses() {
   const { user } = useAuth();
+  const { workspace } = useWorkspace();
+  const company = isCompanyCode(workspace.id) ? workspace.id : 'infinity';
   const today = new Date();
   const [filterMonth, setFilterMonth] = useState(today.getMonth());
   const [filterYear, setFilterYear] = useState(today.getFullYear());
@@ -32,6 +36,7 @@ export function Expenses() {
     start,
     end,
     category: filterCategory || undefined,
+    company,
   });
 
   const [editForm, setEditForm] = useState({
@@ -125,6 +130,7 @@ export function Expenses() {
         is_itc_eligible: form.is_itc_eligible,
         bill_url,
         gstin_of_vendor: form.gstin_of_vendor || null,
+        company,
         created_by: user?.id || '',
       });
       setShowForm(false);

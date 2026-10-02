@@ -1,5 +1,6 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- Existing form integrates polymorphic Supabase document payloads. */
 import { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Plus, Trash2, ArrowLeft, X, CheckCircle, Download } from 'lucide-react';
 import { pdf } from '@react-pdf/renderer';
 import { useQuotations, generateQuotationNumber } from '../hooks/useQuotations';
@@ -18,6 +19,9 @@ import { Input } from '../components/ui/Input';
 import { Card } from '../components/ui/Card';
 import { supabase } from '../lib/supabase';
 import { RITERA_PACKAGES, ALL_COMPLEMENTARY } from '../data/riteraPackages';
+import { COMPANY_LABELS, inheritDocumentCompany, type CompanyCode } from '../domain/company';
+import { RITERA_DEFAULT_TERMS } from '../domain/quotationDefaults';
+import { saveProjectDraftQuotation } from '../services/projectPayments';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -47,12 +51,6 @@ const DEFAULT_TERMS = `1. This quotation is valid for 15 days from the date of i
 2. 50% advance payment required before commencement of work.
 3. Balance payment due within 7 days of completion.
 4. GST will be charged as applicable.`;
-
-const RITERA_DEFAULT_TERMS = `1. This order form is valid for 15 days from the date of issue.
-2. 50% advance payment required before commencement of work.
-3. Balance payment due within 7 days of project completion.
-4. GST will be charged as applicable per government regulations.
-5. The publishing timeline begins after receipt of the advance payment and complete manuscript.`;
 
 const RATIXINFO_DEFAULT_TERMS = `1. 50% advance payment required before project commencement.
 2. Balance payment due within 7 days of project delivery.
@@ -107,7 +105,10 @@ const GST_RATE_OPTIONS = [0, 5, 12, 18, 28];
 export function CreateQuotation() {
   const navigate = useNavigate();
   const params = useParams<{ id?: string }>();
+  const [searchParams] = useSearchParams();
   const isEditing = Boolean(params.id);
+  const prefillProjectId = searchParams.get('project_id');
+  const prefillClientId = searchParams.get('client_id');
 
   const { user } = useAuth();
   const { createQuotation, updateQuotation } = useQuotations();
@@ -127,6 +128,7 @@ export function CreateQuotation() {
   const [clientNameOverride, setClientNameOverride] = useState('');
   const [clientEmailOverride, setClientEmailOverride] = useState('');
   const [consultantName, setConsultantName] = useState('');
+  const [linkedProjectId, setLinkedProjectId] = useState<string | null>(prefillProjectId);
 
   // ── Line items (non-Ritera) ──
   const [items, setItems] = useState<LineItemRow[]>([{ ...defaultItem }]);
@@ -142,6 +144,8 @@ export function CreateQuotation() {
 
   // ── Ritera package state ──
   const [selectedPackageId, setSelectedPackageId] = useState<string | null>(null);
+  const [packageServicesSnapshot, setPackageServicesSnapshot] = useState<Record<string, string[]> | null>(null);
+  const [packagePriceSnapshot, setPackagePriceSnapshot] = useState<number | null>(null);
   const [customPrice, setCustomPrice] = useState('');
   const [selectedComplementary, setSelectedComplementary] = useState<string[]>([]);
   const [excludedServices, setExcludedServices] = useState<string[]>([]);
@@ -171,6 +175,7 @@ export function CreateQuotation() {
   const [loadingEdit, setLoadingEdit] = useState(isEditing);
   const [savedQuotation, setSavedQuotation] = useState<Quotation | null>(null);
   const [downloading, setDownloading] = useState(false);
+  const [loadedStatus, setLoadedStatus] = useState<Quotation['status']>('draft');
 
   // ── Derived ──
   const isRitera = subBrand === 'Ritera Publishing';
@@ -179,7 +184,7 @@ export function CreateQuotation() {
   const isCustomPkg = selectedPackageId === 'custom';
 
   const subtotal = isRitera
-    ? (isCustomPkg ? parseFloat(customPrice) || 0 : selectedPackage?.price || 0)
+    ? (isCustomPkg ? parseFloat(customPrice) || 0 : packagePriceSnapshot ?? selectedPackage?.price ?? 0)
     : isRatixinfo
     ? parseFloat(ratixProjectPrice) || 0
     : items.reduce((sum, item) => {
@@ -212,6 +217,45 @@ export function CreateQuotation() {
     }
   }, [isEditing]);
 
+  // ── Pre-fill when quotation creation starts inside a project ──
+  useEffect(() => {
+    if (!prefillProjectId || isEditing) return;
+    async function loadProject() {
+      const { data, error: projectError } = await supabase
+        .from('projects')
+        .select('id, name, sub_brand, company, client:clients(*)')
+        .eq('id', prefillProjectId)
+        .single();
+      if (projectError || !data) {
+        setError(projectError?.message || 'Project could not be loaded.');
+        return;
+      }
+      setLinkedProjectId(data.id);
+      setTitle((current) => current || data.name);
+      if (data.sub_brand) setSubBrand(data.sub_brand);
+      const inheritedCompany = inheritDocumentCompany(data.company as CompanyCode | null);
+      setSubBrand(COMPANY_LABELS[inheritedCompany]);
+      const projectClient = Array.isArray(data.client) ? data.client[0] : data.client;
+      if (projectClient) {
+        setSelectedClient(projectClient);
+        setUseManualClient(false);
+        if (projectClient.state_code) setPlaceOfSupplyCode(projectClient.state_code);
+      }
+    }
+    void loadProject();
+  }, [isEditing, prefillProjectId]);
+
+  useEffect(() => {
+    if (!prefillClientId || prefillProjectId || isEditing) return;
+    void supabase.from('clients').select('*').eq('id', prefillClientId).single().then(({ data }) => {
+      if (!data) return;
+      setSelectedClient(data); setUseManualClient(false);
+      const inheritedCompany = inheritDocumentCompany(data.default_company as CompanyCode | null);
+      setSubBrand(COMPANY_LABELS[inheritedCompany]);
+      if (data.state_code) setPlaceOfSupplyCode(data.state_code);
+    });
+  }, [isEditing, prefillClientId, prefillProjectId]);
+
   // ── Fetch existing quotation for edit ──
   useEffect(() => {
     if (!isEditing || !params.id) return;
@@ -229,6 +273,8 @@ export function CreateQuotation() {
         if (!data) return;
 
         setQuotationNumber(data.quotation_number);
+        setLoadedStatus(data.status);
+        setLinkedProjectId(data.project_id || null);
         setQuotationDate(data.date);
         setValidUntil(data.valid_until || '');
         setSubBrand(data.sub_brand);
@@ -263,6 +309,8 @@ export function CreateQuotation() {
             const nd = JSON.parse(data.notes);
             if (nd.packageId) {
               setSelectedPackageId(nd.packageId);
+              setPackageServicesSnapshot(nd.services && typeof nd.services === 'object' ? nd.services : null);
+              setPackagePriceSnapshot(Number(data.taxable_value || 0) + Number(data.discount_amount || 0));
               setSelectedComplementary(nd.complementary || []);
               setExcludedServices(nd.excludedServices || []);
               setPaidAddons((nd.paidAddons || []).join('\n'));
@@ -338,6 +386,8 @@ export function CreateQuotation() {
     setSelectedPackageId(pkgId);
     setExcludedServices([]);
     const pkg = RITERA_PACKAGES.find(p => p.id === pkgId);
+    setPackageServicesSnapshot(pkg ? structuredClone(pkg.services) : null);
+    setPackagePriceSnapshot(pkg && !pkg.isCustom ? pkg.price : null);
     if (pkgId === 'custom') {
       setDiscountValue('');
       setSelectedComplementary([]);
@@ -363,6 +413,8 @@ export function CreateQuotation() {
   function handleSubBrandChange(brand: string) {
     setSubBrand(brand);
     setSelectedPackageId(null);
+    setPackageServicesSnapshot(null);
+    setPackagePriceSnapshot(null);
     setSelectedComplementary([]);
     setPaidAddons('');
     if (!isEditing) {
@@ -464,7 +516,7 @@ export function CreateQuotation() {
       ? JSON.stringify({
           packageId: selectedPackageId,
           packageName: selectedPackage?.name || 'Custom',
-          services: selectedPackage?.services || {},
+          services: packageServicesSnapshot || selectedPackage?.services || {},
           complementary: selectedComplementary,
           paidAddons: paidAddons.split('\n').map(l => l.trim()).filter(Boolean),
           excludedServices,
@@ -487,14 +539,17 @@ export function CreateQuotation() {
         })
       : (notes || null);
 
+    const company: CompanyCode = subBrand === 'Ratixinfo Tech' ? 'ratix' : subBrand === 'Infinity Enterprises' ? 'infinity' : 'ritera';
     const payload = {
       quotation_number: quotationNumber,
       date: quotationDate,
       valid_until: validUntil || null,
       client_id: !useManualClient && selectedClient ? selectedClient.id : null,
+      project_id: linkedProjectId || null,
       client_name_override: useManualClient ? clientNameOverride : null,
       client_email_override: useManualClient && clientEmailOverride ? clientEmailOverride : null,
       sub_brand: subBrand,
+      company,
       title,
       consultant_name: consultantName.trim() || null,
       items: quotationItems,
@@ -520,7 +575,39 @@ export function CreateQuotation() {
     setSaving(true);
     try {
       if (isEditing && params.id) {
-        await updateQuotation(params.id, payload);
+        if (loadedStatus === 'approved' || loadedStatus === 'converted') {
+          throw new Error('Approved quotation commercial terms are locked. Create a new revision instead.');
+        }
+        if (linkedProjectId) {
+          const serviceDetails = isRitera
+            ? Object.values(packageServicesSnapshot || selectedPackage?.services || {}).flat().filter((item) => !excludedServices.includes(item)).join('\n')
+            : isRatixinfo
+              ? [...ratixServices, ratixCustomService].filter(Boolean).join('\n')
+              : quotationItems.map((item) => item.description).join('\n');
+          await saveProjectDraftQuotation(params.id, {
+            date: quotationDate,
+            valid_until: validUntil || null,
+            title,
+            consultant_name: consultantName.trim() || null,
+            items: quotationItems,
+            base_price: subtotal,
+            discount_type: discountType,
+            discount_value: parseFloat(discountValue) || 0,
+            include_gst: includeGst,
+            gst_rate: gstRate,
+            is_igst: isIGST,
+            payment_schedule: paymentSchedule.map((row) => ({
+              label: row.label,
+              percentage: row.percentage,
+              milestone: row.milestone || null,
+            })),
+            notes: notesValue,
+            terms: terms || null,
+            service_details: serviceDetails,
+          });
+        } else {
+          await updateQuotation(params.id, payload);
+        }
         navigate('/quotations');
       } else {
         const created = await createQuotation(payload);
@@ -792,7 +879,8 @@ export function CreateQuotation() {
 
             {/* Section B: Included Services (non-custom only) */}
             {selectedPackageId && !isCustomPkg && selectedPackage && (() => {
-              const totalServiceCount = Object.values(selectedPackage.services).flat().length;
+              const displayedServices = packageServicesSnapshot || selectedPackage.services;
+              const totalServiceCount = Object.values(displayedServices).flat().length;
               const includedCount = totalServiceCount - excludedServices.length;
               return (
                 <Card>
@@ -800,7 +888,7 @@ export function CreateQuotation() {
                     {selectedPackage.name} Package — What&apos;s Included ({includedCount} of {totalServiceCount} services)
                   </h2>
                   <div className="space-y-4">
-                    {Object.entries(selectedPackage.services).map(([category, serviceList]) => (
+                    {Object.entries(displayedServices).map(([category, serviceList]) => (
                       <div key={category}>
                         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">
                           {category}

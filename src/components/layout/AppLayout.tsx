@@ -12,12 +12,13 @@ export function AppLayout({ onSignOut, userName }: AppLayoutProps) {
   const location = useLocation();
 
   return (
-    <div className="app-shell flex h-screen">
+    <div className="app-shell flex h-screen min-w-0 overflow-hidden">
       <Sidebar onSignOut={onSignOut} userName={userName} />
-      <main className="flex-1 overflow-hidden md:py-4 md:pr-4">
-        <div className="h-full overflow-y-auto bg-white md:rounded-[24px] md:shadow-[0_1px_2px_rgba(16,24,40,0.04),0_18px_48px_rgba(16,24,40,0.08)] mobile-content-pad">
+      <main className="min-w-0 flex-1 overflow-hidden md:py-4 md:pr-4">
+        <div className="h-full min-w-0 max-w-full overflow-x-hidden overflow-y-auto bg-white md:rounded-[24px] md:shadow-[0_1px_2px_rgba(16,24,40,0.04),0_18px_48px_rgba(16,24,40,0.08)] mobile-content-pad">
           <AnimatePresence mode="wait">
             <motion.div
+              className="min-w-0 max-w-full"
               key={location.pathname}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}

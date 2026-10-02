@@ -5,7 +5,7 @@ import {
   LayoutDashboard, FileText, Receipt, BarChart2,
   FileCog, Users, Settings, LogOut, Building2,
   Wallet, ClipboardList, FileCheck, BadgeCheck,
-  ChevronsUpDown, Check,
+  ChevronsUpDown, Check, ChartNoAxesCombined,
 } from 'lucide-react';
 import { useWorkspace } from '../../context/WorkspaceContext';
 
@@ -40,6 +40,7 @@ const navSections: NavSection[] = [
     items: [
       { to: '/expenses', icon: Receipt, label: 'Expenses' },
       { to: '/cash-flow', icon: Wallet, label: 'Cash Flow' },
+      { to: '/cash-flow-analysis', icon: ChartNoAxesCombined, label: 'Cash Flow Analysis' },
     ],
   },
   {
@@ -110,25 +111,23 @@ function WorkspaceSwitcher() {
 
 function NavRow({ to, Icon, label }: { to: string; Icon: React.ElementType; label: string }) {
   return (
-    <NavLink to={to} end={to === '/'} className="relative block">
+    <NavLink to={to} end={to === '/' || to === '/cash-flow'} className="relative block">
       {({ isActive }) => (
-        <div className="relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium">
+        <div className="group relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors duration-150 hover:bg-slate-100/70">
           {isActive && (
             <motion.span
               layoutId="sidebar-active"
               className="absolute inset-0 rounded-lg"
-              style={{ background: 'rgba(var(--accent-rgb), 0.10)' }}
+              style={{ background: 'rgba(var(--accent-rgb), 0.10)', boxShadow: 'inset 0 0 0 1px rgba(var(--accent-rgb), 0.035)' }}
               transition={{ type: 'spring', stiffness: 480, damping: 38 }}
             />
           )}
           <Icon
             size={18}
-            className="relative z-10 shrink-0"
-            style={{ color: isActive ? 'var(--accent)' : '#9ca3af' }}
+            className={`relative z-10 shrink-0 transition-all duration-150 group-hover:scale-105 ${isActive ? 'text-slate-950' : 'text-gray-400 group-hover:text-emerald-600'}`}
           />
           <span
-            className="relative z-10"
-            style={{ color: isActive ? 'var(--accent)' : '#4b5563' }}
+            className={`relative z-10 transition-colors duration-150 group-hover:text-slate-950 ${isActive ? 'text-slate-950' : 'text-gray-600'}`}
           >
             {label}
           </span>

@@ -5,10 +5,14 @@ registerPDFFonts()
 import { getBrandDetails } from '../../constants/businessDetails'
 import { getLogo, PLACEHOLDER_LOGOS } from '../../utils/logos'
 import { amountToWords } from '../../utils/amountToWords'
+import { ReceiptTemplateModern } from './ReceiptTemplateModern'
+
+export type ReceiptTemplateKind = 'modern' | 'legacy'
 
 interface ReceiptPDFProps {
   receipt: PaymentReceipt
   client?: Client | null
+  template?: ReceiptTemplateKind
 }
 
 function formatAmount(n: number): string {
@@ -99,7 +103,7 @@ const styles = StyleSheet.create({
   footerText: { fontSize: 9, color: '#64748b' },
 })
 
-export default function ReceiptPDF({ receipt, client }: ReceiptPDFProps) {
+export function ReceiptTemplateLegacy({ receipt, client }: ReceiptPDFProps) {
   const brand = getBrandDetails(receipt.sub_brand)
   const isRitera = receipt.sub_brand?.toLowerCase().includes('ritera')
   const logoSrc = getLogo(isRitera ? 'ritera' : 'ratixinfo')
@@ -211,4 +215,10 @@ export default function ReceiptPDF({ receipt, client }: ReceiptPDFProps) {
       </Page>
     </Document>
   )
+}
+
+export default function ReceiptPDF({ receipt, client, template = 'modern' }: ReceiptPDFProps) {
+  return template === 'legacy'
+    ? <ReceiptTemplateLegacy receipt={receipt} client={client} />
+    : <ReceiptTemplateModern receipt={receipt} client={client} />
 }

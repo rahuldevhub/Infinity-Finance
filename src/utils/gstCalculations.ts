@@ -1,4 +1,4 @@
-import { BUSINESS_STATE_CODE } from '../types';
+import { BUSINESS_STATE_CODE } from '../types/index.js';
 
 export function calculateGST(taxableValue: number, gstRate: number, isIGST: boolean) {
   const totalGST = (taxableValue * gstRate) / 100;

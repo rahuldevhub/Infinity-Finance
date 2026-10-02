@@ -1,349 +1,247 @@
-import { Document, Page, Text, View, Image, StyleSheet } from '@react-pdf/renderer';
+import {
+  Circle, Document, Image, Line, Page, Path, Rect, StyleSheet, Svg, Text, View,
+} from '@react-pdf/renderer';
+import type { ReactNode } from 'react';
 import type { Invoice, BusinessSettings } from '../../types';
 import { registerPDFFonts } from '../../utils/pdfFonts';
-registerPDFFonts();
 import { getLogo, PLACEHOLDER_LOGOS } from '../../utils/logos';
 import { BUSINESS, getBrandDetails } from '../../constants/businessDetails';
 import { amountToWords } from '../../utils/amountToWords';
+import { invoiceClientSnapshot } from '../../domain/invoiceCompatibility';
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+registerPDFFonts();
 
-function dmy(s?: string | null): string {
-  if (!s) return '\u2014';
-  const d = new Date(s + 'T00:00:00');
-  return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+const NAVY = '#071d3a';
+const NAVY_2 = '#0b2b50';
+const RED = '#ef233c';
+const TEXT = '#10213d';
+const MUTED = '#65758f';
+const BORDER = '#dfe6ef';
+const SOFT = '#f5f8fc';
+const PALE_RED = '#fff5f6';
+const GREEN = '#159447';
+const PALE_GREEN = '#e3f7e9';
+const PAD = 28;
+
+function longDate(value?: string | null): string {
+  if (!value) return '-';
+  const date = new Date(`${value}T00:00:00`);
+  return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' });
 }
 
-function fmt(n: number): string {
-  return 'INR ' + n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+function money(value: number): string {
+  return `₹${Number(value || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
-function num(n: number): string {
-  return n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+function number(value: number): string {
+  return Number(value || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-// ── Column widths ─────────────────────────────────────────────────────────────
+type IconName = 'mail' | 'globe' | 'phone' | 'document' | 'calendar' | 'tag' | 'building' | 'user' | 'pin' | 'layers' | 'notes';
 
-const C  = { hsn: 55, qty: 30, rate: 65, gst: 38, cgst: 55, sgst: 55, igst: 55, total: 65 };
-const CS = { qty: 38, unit: 38, rate: 72, amount: 80 };
-const BDR = '#e0e0e0';
+function LineIcon({ name, color = NAVY, size = 14 }: { name: IconName; color?: string; size?: number }) {
+  const common = { fill: 'none', stroke: color, strokeWidth: 1.7, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      {name === 'mail' && <><Rect x="3" y="5" width="18" height="14" rx="2" {...common} /><Path d="M4 7l8 6 8-6" {...common} /></>}
+      {name === 'globe' && <><Circle cx="12" cy="12" r="9" {...common} /><Path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18" {...common} /></>}
+      {name === 'phone' && <Path d="M7 3l3 4-2 2c2 4 4 6 8 8l2-2 4 3c-1 3-3 4-6 3C9 19 5 15 3 8 2 5 4 3 7 3z" {...common} />}
+      {name === 'document' && <><Path d="M6 3h8l4 4v14H6zM14 3v5h5" {...common} /><Line x1="9" y1="12" x2="15" y2="12" {...common} /><Line x1="9" y1="16" x2="15" y2="16" {...common} /></>}
+      {name === 'calendar' && <><Rect x="3" y="5" width="18" height="16" rx="2" {...common} /><Line x1="3" y1="10" x2="21" y2="10" {...common} /><Line x1="8" y1="3" x2="8" y2="7" {...common} /><Line x1="16" y1="3" x2="16" y2="7" {...common} /></>}
+      {name === 'tag' && <><Path d="M3 12V4h8l10 10-7 7z" {...common} /><Circle cx="8" cy="8" r="1.5" {...common} /></>}
+      {name === 'building' && <><Path d="M5 21V5l7-3 7 3v16M3 21h18" {...common} /><Line x1="9" y1="7" x2="9" y2="9" {...common} /><Line x1="15" y1="7" x2="15" y2="9" {...common} /><Line x1="9" y1="12" x2="9" y2="14" {...common} /><Line x1="15" y1="12" x2="15" y2="14" {...common} /><Path d="M10 21v-4h4v4" {...common} /></>}
+      {name === 'user' && <><Circle cx="12" cy="8" r="4" {...common} /><Path d="M4 21c1-5 4-7 8-7s7 2 8 7" {...common} /></>}
+      {name === 'pin' && <><Path d="M12 22s7-7 7-13a7 7 0 10-14 0c0 6 7 13 7 13z" {...common} /><Circle cx="12" cy="9" r="2" {...common} /></>}
+      {name === 'layers' && <><Path d="M12 3L3 8l9 5 9-5zM3 12l9 5 9-5M3 16l9 5 9-5" {...common} /></>}
+      {name === 'notes' && <><Path d="M6 3h12v18H6z" {...common} /><Line x1="9" y1="8" x2="15" y2="8" {...common} /><Line x1="9" y1="12" x2="15" y2="12" {...common} /><Line x1="9" y1="16" x2="13" y2="16" {...common} /></>}
+    </Svg>
+  );
+}
 
-// ── All styles at module level — zero inline fontFamily in JSX ────────────────
-const ps = StyleSheet.create({
-  // Page
-  page: { fontSize: 10, backgroundColor: 'white', paddingBottom: 72 },
-
-  // Header
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 16, paddingHorizontal: 32 },
-  headerLeft: { flexDirection: 'row', alignItems: 'center' },
-  logo: { width: 44, height: 44, marginRight: 12 },
-  headerBrandName: { color: 'white', fontSize: 16, fontWeight: 700, letterSpacing: 1 },
-  headerBrandSub: { fontSize: 9, letterSpacing: 0.5, marginTop: 3, },
-  headerRight: { alignItems: 'flex-end' },
-  headerContact: { color: '#94a3b8', fontSize: 9, marginBottom: 2, },
-  headerContactLast: { color: '#94a3b8', fontSize: 9, },
-
-  // Accent stripe
-  stripe: { height: 3 },
-
-  // Title bar
-  titleBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 32, borderBottomWidth: 0.5, borderBottomColor: '#f0f0f0', borderBottomStyle: 'solid' },
-  titleText: { fontSize: 14, fontWeight: 700, letterSpacing: 2 },
-  titleMeta: { alignItems: 'flex-end' },
-  metaText: { fontSize: 9, color: '#888888', marginBottom: 1, },
-  metaTextLast: { fontSize: 9, color: '#888888', },
-
-  // Bill boxes
-  billedRow: { flexDirection: 'row', paddingHorizontal: 32, marginTop: 16 },
-  billBox: { flex: 1, borderWidth: 0.5, borderColor: BDR, borderStyle: 'solid', borderRadius: 6, paddingVertical: 10, paddingHorizontal: 12 },
-  billBoxLeft: { flex: 1, borderWidth: 0.5, borderColor: BDR, borderStyle: 'solid', borderRadius: 6, paddingVertical: 10, paddingHorizontal: 12, marginRight: 12 },
-  billLabel: { fontSize: 8, fontWeight: 700, color: '#888888', letterSpacing: 1.5, marginBottom: 5 },
-  billName: { fontSize: 12, fontWeight: 700 },
-  billUnit: { fontSize: 9, marginTop: 2, },
-  billAddr: { fontSize: 9, color: '#444444', marginTop: 2, },
-  billGstin: { fontSize: 9, fontWeight: 700, marginTop: 3 },
-  billContact: { fontSize: 9, color: '#666666', marginTop: 2, },
-
-  // Supply details bar
-  supplyBar: { marginHorizontal: 32, marginTop: 12, backgroundColor: '#f8f8f8', borderWidth: 0.5, borderColor: BDR, borderStyle: 'solid', borderRadius: 4, paddingVertical: 6, paddingHorizontal: 12, flexDirection: 'row' },
-  supplyText: { fontSize: 9, color: '#444444', },
-  supplyTextFirst: { fontSize: 9, color: '#444444', marginRight: 24, },
-
-  // Table
-  tableWrap: { marginHorizontal: 32, marginTop: 12 },
-  tableHeader: { flexDirection: 'row', paddingVertical: 7, paddingLeft: 8, paddingRight: 8 },
-  tableRow: { flexDirection: 'row', paddingVertical: 6, paddingLeft: 8, paddingRight: 8, borderBottomWidth: 0.5, borderBottomColor: '#eeeeee', borderBottomStyle: 'solid' },
-  tableRowAlt: { flexDirection: 'row', paddingVertical: 6, paddingLeft: 8, paddingRight: 8, borderBottomWidth: 0.5, borderBottomColor: '#eeeeee', borderBottomStyle: 'solid', backgroundColor: '#fafafa' },
-  th: { fontSize: 8, fontWeight: 700, color: 'white' },
-  td: { fontSize: 9, color: '#2d2d2d', },
-
-  // Summary
-  summaryOuter: { flexDirection: 'row', justifyContent: 'flex-end', paddingHorizontal: 32, marginTop: 8 },
-  summaryInner: { width: '50%' },
-  sumRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 3, paddingHorizontal: 8 },
-  sumLabel: { fontSize: 10, color: '#444444', },
-  sumValue: { fontSize: 10, color: '#2d2d2d', },
-  totalDivider: { marginVertical: 4, marginHorizontal: 8, borderTopWidth: 1, borderTopStyle: 'solid' },
-  totalRow: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 8 },
-  totalLabel: { fontSize: 12, fontWeight: 700 },
-  totalValue: { fontSize: 12, fontWeight: 700 },
-
-  // Amount in words
-  amountWords: { paddingHorizontal: 40, marginTop: 6 },
-  amountWordsText: { fontSize: 9, color: '#666666', },
-
-  // Payment details
-  paymentBox: { marginHorizontal: 32, marginTop: 12, backgroundColor: '#eff6ff', borderWidth: 0.5, borderColor: '#bfdbfe', borderStyle: 'solid', borderRadius: 6, paddingVertical: 10, paddingHorizontal: 12 },
-  paymentTitle: { fontSize: 8, fontWeight: 700, color: '#1d4ed8', letterSpacing: 1.5, marginBottom: 6 },
-  paymentRow: { fontSize: 9, color: '#333333', lineHeight: 1.8, },
-  paymentRowBold: { fontSize: 9, fontWeight: 700, color: '#333333', lineHeight: 1.8 },
-
-  // Notes
-  notesBox: { marginHorizontal: 32, marginTop: 12, borderWidth: 0.5, borderColor: BDR, borderStyle: 'solid', borderRadius: 6, paddingVertical: 10, paddingHorizontal: 12 },
-  notesTitle: { fontSize: 8, fontWeight: 700, color: '#888888', letterSpacing: 1, marginBottom: 5 },
-  notesContent: { fontSize: 10, color: '#444444', marginBottom: 6, },
-  notesStd: { fontSize: 9, color: '#aaaaaa', lineHeight: 1.7 },
-
-  // Thank you banner (fixed above footer)
-  thanksBanner: { position: 'absolute', bottom: 30, left: 0, right: 0, paddingVertical: 10, alignItems: 'center' },
-  thanksBannerText: { color: 'white', fontSize: 11, fontWeight: 700, letterSpacing: 1.5 },
-
-  // Footer (fixed at bottom)
-  footer: { position: 'absolute', bottom: 0, left: 0, right: 0, paddingVertical: 8, paddingHorizontal: 32, flexDirection: 'row', justifyContent: 'space-between' },
-  footerText: { fontSize: 8, color: '#64748b', },
+const styles = StyleSheet.create({
+  page: { fontFamily: 'Roboto', fontSize: 9, color: TEXT, backgroundColor: '#ffffff', paddingBottom: 65 },
+  header: { height: 88, paddingHorizontal: PAD, backgroundColor: NAVY, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', overflow: 'hidden' },
+  headerGlow: { position: 'absolute', right: -30, bottom: -35, width: 210, height: 76, backgroundColor: NAVY_2, transform: 'rotate(-7deg)' },
+  headerAccent: { position: 'absolute', right: 78, bottom: -16, width: 105, height: 34, backgroundColor: '#5d1730', transform: 'rotate(19deg)', opacity: 0.55 },
+  brand: { flexDirection: 'row', alignItems: 'center' },
+  logo: { width: 50, height: 50, objectFit: 'contain', marginRight: 13 },
+  brandDivider: { width: 1, height: 42, backgroundColor: '#a7b4c6', marginRight: 13 },
+  brandName: { color: '#ffffff', fontSize: 18, fontWeight: 700, letterSpacing: 0.6 },
+  brandTagline: { color: '#e3e9f1', fontSize: 9.5, marginTop: 4 },
+  brandUnderline: { width: 30, height: 2, backgroundColor: RED, marginTop: 6 },
+  contactBlock: { width: 165 },
+  contactRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 5 },
+  contactIcon: { width: 15, marginRight: 7, alignItems: 'center' },
+  contactText: { color: '#ffffff', fontSize: 8.5 },
+  redRule: { height: 2, backgroundColor: RED },
+  titleArea: { marginHorizontal: PAD, paddingTop: 24, paddingBottom: 16, flexDirection: 'row', justifyContent: 'space-between' },
+  titleAreaCompact: { paddingTop: 14, paddingBottom: 10 },
+  titleAccent: { width: 30, height: 2.5, borderRadius: 2, backgroundColor: RED, marginBottom: 12 },
+  title: { color: NAVY, fontSize: 27, fontWeight: 700, letterSpacing: 0.3 },
+  titleSoft: { color: '#6f819b' },
+  subtitle: { color: '#6f819b', fontSize: 11, marginTop: 5 },
+  metadata: { width: 177, borderLeftWidth: 1, borderLeftColor: BORDER, paddingLeft: 20 },
+  metaRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 7 },
+  iconTile: { width: 28, height: 28, borderRadius: 7, backgroundColor: SOFT, alignItems: 'center', justifyContent: 'center', marginRight: 10 },
+  metaLabel: { color: MUTED, fontSize: 7.5, marginBottom: 2 },
+  metaValue: { color: TEXT, fontSize: 9.5, fontWeight: 700 },
+  statusBadge: { alignSelf: 'flex-start', paddingVertical: 3, paddingHorizontal: 8, borderRadius: 5 },
+  statusText: { fontSize: 8, fontWeight: 700 },
+  clientRow: { marginHorizontal: PAD, flexDirection: 'row' },
+  card: { flex: 1, minHeight: 112, borderWidth: 0.7, borderColor: BORDER, borderRadius: 8, padding: 11 },
+  cardCompact: { minHeight: 92, padding: 8 },
+  cardLeft: { marginRight: 10 },
+  cardHeader: { flexDirection: 'row' },
+  cardBody: { flex: 1 },
+  overline: { color: MUTED, fontSize: 7.5, fontWeight: 700, letterSpacing: 0.7, marginBottom: 5 },
+  clientName: { color: TEXT, fontSize: 12.5, fontWeight: 700, marginBottom: 3 },
+  unitText: { color: '#3f506a', fontSize: 8.5, marginBottom: 2 },
+  address: { color: '#3f506a', fontSize: 8.5, lineHeight: 1.35 },
+  gstin: { color: TEXT, fontSize: 8.5, fontWeight: 700, marginTop: 3 },
+  clientContact: { color: '#455977', fontSize: 8.2, marginTop: 4 },
+  supplyBar: { marginHorizontal: PAD, marginTop: 11, paddingVertical: 9, paddingHorizontal: 12, backgroundColor: SOFT, borderRadius: 7, flexDirection: 'row' },
+  supplyBarCompact: { marginTop: 8, paddingVertical: 6 },
+  supplyCell: { flex: 1, flexDirection: 'row', alignItems: 'center' },
+  supplyCellRight: { flex: 1, flexDirection: 'row', alignItems: 'center', borderLeftWidth: 1, borderLeftColor: BORDER, paddingLeft: 16 },
+  supplyLabel: { color: TEXT, fontSize: 8.5 },
+  supplyValue: { fontWeight: 700 },
+  table: { marginHorizontal: PAD, marginTop: 14, borderWidth: 0.7, borderColor: BORDER, borderRadius: 7, overflow: 'hidden' },
+  tableCompact: { marginTop: 9 },
+  tableHead: { minHeight: 32, paddingHorizontal: 7, backgroundColor: NAVY, flexDirection: 'row', alignItems: 'center' },
+  tableRow: { minHeight: 33, paddingHorizontal: 7, paddingVertical: 8, flexDirection: 'row', alignItems: 'center', borderBottomWidth: 0.6, borderBottomColor: BORDER },
+  tableRowCompact: { minHeight: 24, paddingVertical: 5 },
+  tableRowAlt: { backgroundColor: '#fbfcfe' },
+  th: { color: '#ffffff', fontSize: 6.4, fontWeight: 700 },
+  td: { color: TEXT, fontSize: 7.5 },
+  rowNumber: { width: 20, textAlign: 'center' },
+  description: { flex: 1, paddingHorizontal: 4 },
+  hsn: { width: 48, textAlign: 'center' },
+  qty: { width: 24, textAlign: 'center' },
+  unit: { width: 30, textAlign: 'center' },
+  rate: { width: 58, textAlign: 'right' },
+  gst: { width: 31, textAlign: 'center' },
+  tax: { width: 56, textAlign: 'right' },
+  total: { width: 67, textAlign: 'right', fontWeight: 700 },
+  totalsArea: { marginHorizontal: PAD, marginTop: 13, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'stretch' },
+  totalsAreaCompact: { marginTop: 8 },
+  wordsCard: { width: '57%', backgroundColor: PALE_RED, borderRadius: 8, padding: 13, flexDirection: 'row', alignItems: 'center' },
+  wordsCardCompact: { padding: 9 },
+  wordsMark: { width: 37, height: 37, borderRadius: 8, backgroundColor: '#ffe6e9', alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+  wordsMarkText: { color: RED, fontSize: 16, fontWeight: 700 },
+  wordsLabel: { color: RED, fontSize: 7.5, fontWeight: 700, letterSpacing: 0.5, marginBottom: 7 },
+  wordsText: { color: TEXT, fontSize: 11, lineHeight: 1.25, fontWeight: 700 },
+  totalsCard: { width: '39%', borderWidth: 0.7, borderColor: BORDER, borderRadius: 8, overflow: 'hidden' },
+  totalsBody: { paddingHorizontal: 10, paddingVertical: 8 },
+  totalLine: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 3 },
+  totalLineLabel: { color: TEXT, fontSize: 8.4 },
+  totalLineValue: { color: TEXT, fontSize: 8.4, fontWeight: 700 },
+  discountLabel: { color: RED },
+  grandTotal: { backgroundColor: PALE_RED, borderTopWidth: 0.8, borderTopColor: '#ffb9c1', paddingVertical: 9, paddingHorizontal: 10, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  grandLabel: { color: RED, fontSize: 9, fontWeight: 700 },
+  grandValue: { color: RED, fontSize: 15, fontWeight: 700 },
+  notes: { marginHorizontal: PAD, marginTop: 13, borderWidth: 0.7, borderColor: BORDER, borderRadius: 8, padding: 11, flexDirection: 'row' },
+  notesCompact: { marginTop: 8, padding: 8 },
+  notesBody: { flex: 1 },
+  notesTitle: { color: MUTED, fontSize: 7.5, fontWeight: 700, letterSpacing: 0.7, marginBottom: 6 },
+  noteLine: { color: '#455977', fontSize: 8, lineHeight: 1.45, marginBottom: 2 },
+  footer: { position: 'absolute', bottom: 0, left: 0, right: 0 },
+  footerBody: { marginHorizontal: PAD, height: 45, borderTopWidth: 0.7, borderTopColor: BORDER, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  footerItem: { flexDirection: 'row', alignItems: 'center' },
+  footerText: { color: '#455977', fontSize: 7 },
+  footerStripe: { height: 8, backgroundColor: NAVY },
+  footerRed: { position: 'absolute', bottom: 0, right: 0, width: 170, height: 8, backgroundColor: RED, transform: 'skewX(-28deg)' },
 });
-
-// ── Component ─────────────────────────────────────────────────────────────────
 
 interface InvoicePDFProps {
   invoice: Invoice;
   settings?: BusinessSettings | null;
 }
 
+function MetaRow({ icon, label, children }: { icon: IconName; label: string; children: ReactNode }) {
+  return <View style={styles.metaRow}><View style={styles.iconTile}><LineIcon name={icon} size={15} /></View><View><Text style={styles.metaLabel}>{label}</Text>{children}</View></View>;
+}
+
 export function InvoicePDF({ invoice }: InvoicePDFProps) {
   const brand = getBrandDetails(invoice.sub_brand || '');
   const isRitera = !invoice.sub_brand?.toLowerCase().includes('ratix');
-  const logoSrc = getLogo(isRitera ? 'ritera' : 'ratixinfo') || PLACEHOLDER_LOGOS[isRitera ? 'ritera' : 'ratixinfo'];
-  const isGst = invoice.invoice_type !== 'non_gst';
-
-  const cgstRate = invoice.taxable_value > 0
-    ? Math.round(invoice.cgst_amount / invoice.taxable_value * 100) : 0;
-  const igstRate = invoice.taxable_value > 0
-    ? Math.round(invoice.igst_amount / invoice.taxable_value * 100) : 0;
-
-  const clientContacts = [invoice.client?.email, invoice.client?.phone].filter(Boolean).join(' · ');
+  const logo = getLogo(isRitera ? 'ritera' : 'ratixinfo') || PLACEHOLDER_LOGOS[isRitera ? 'ritera' : 'ratixinfo'];
+  const billTo = invoiceClientSnapshot(invoice);
+  const discountAmount = Number(invoice.discount_amount || 0);
+  const subtotal = Number(invoice.taxable_value || 0) + discountAmount;
+  const cgstRate = invoice.taxable_value > 0 ? Number(((invoice.cgst_amount / invoice.taxable_value) * 100).toFixed(2)) : 0;
+  const igstRate = invoice.taxable_value > 0 ? Number(((invoice.igst_amount / invoice.taxable_value) * 100).toFixed(2)) : 0;
+  const status = (invoice.payment_status || 'paid').toUpperCase();
+  const paid = status === 'PAID';
+  const compact = (invoice.items || []).length > 2;
 
   return (
-    <Document>
-      <Page size="A4" style={ps.page}>
-
-        {/* ── A: Header ── */}
-        <View style={[ps.header, { backgroundColor: brand.headerBg }]}>
-          <View style={ps.headerLeft}>
-            {logoSrc && <Image src={logoSrc} style={ps.logo} />}
-            <View>
-              {isGst ? (
-                <>
-                  <Text style={ps.headerBrandName}>{BUSINESS.legalName}</Text>
-                  <Text style={[ps.headerBrandSub, { color: brand.accentColor }]}>Unit of {brand.brandName}</Text>
-                </>
-              ) : (
-                <>
-                  <Text style={ps.headerBrandName}>{brand.brandName}</Text>
-                  <Text style={[ps.headerBrandSub, { color: brand.accentColor }]}>{brand.tagline}</Text>
-                </>
-              )}
-            </View>
+    <Document title={`Tax Invoice ${invoice.invoice_number}`} author={brand.brandName} subject="Final GST tax invoice">
+      <Page size="A4" style={styles.page}>
+        <View style={styles.header}>
+          <View style={styles.headerGlow} /><View style={styles.headerAccent} />
+          <View style={styles.brand}>
+            {logo ? <Image src={logo} style={styles.logo} /> : null}<View style={styles.brandDivider} />
+            <View><Text style={styles.brandName}>{brand.brandName.toUpperCase()}</Text><Text style={styles.brandTagline}>{brand.tagline}</Text><View style={styles.brandUnderline} /></View>
           </View>
-          <View style={ps.headerRight}>
-            <Text style={ps.headerContact}>{brand.email}</Text>
-            <Text style={ps.headerContact}>{brand.website}</Text>
-            <Text style={ps.headerContactLast}>{brand.phone}</Text>
+          <View style={styles.contactBlock}>
+            <View style={styles.contactRow}><View style={styles.contactIcon}><LineIcon name="mail" color="#ffffff" size={12} /></View><Text style={styles.contactText}>{brand.email}</Text></View>
+            <View style={styles.contactRow}><View style={styles.contactIcon}><LineIcon name="globe" color="#ffffff" size={12} /></View><Text style={styles.contactText}>{brand.website}</Text></View>
+            <View style={styles.contactRow}><View style={styles.contactIcon}><LineIcon name="phone" color="#ffffff" size={12} /></View><Text style={styles.contactText}>{brand.phone}</Text></View>
+          </View>
+        </View>
+        <View style={styles.redRule} />
+
+        <View style={[styles.titleArea, compact ? styles.titleAreaCompact : {}]}>
+          <View><View style={styles.titleAccent} /><Text style={styles.title}>TAX <Text style={styles.titleSoft}>INVOICE</Text></Text><Text style={styles.subtitle}>For services provided</Text></View>
+          <View style={styles.metadata}>
+            <MetaRow icon="document" label="Invoice No."><Text style={styles.metaValue}>{invoice.invoice_number}</Text></MetaRow>
+            <MetaRow icon="calendar" label="Date"><Text style={styles.metaValue}>{longDate(invoice.invoice_date)}</Text></MetaRow>
+            <MetaRow icon="tag" label="Status"><View style={[styles.statusBadge, { backgroundColor: paid ? PALE_GREEN : SOFT }]}><Text style={[styles.statusText, { color: paid ? GREEN : MUTED }]}>{status}</Text></View></MetaRow>
           </View>
         </View>
 
-        {/* ── B: Accent stripe ── */}
-        <View style={[ps.stripe, { backgroundColor: brand.accentColor }]} />
+        <View style={styles.clientRow}>
+          <View style={[styles.card, styles.cardLeft, compact ? styles.cardCompact : {}]}><View style={styles.cardHeader}><View style={styles.iconTile}><LineIcon name="building" size={16} /></View><View style={styles.cardBody}>
+            <Text style={styles.overline}>BILLED BY</Text><Text style={styles.clientName}>{BUSINESS.legalName}</Text><Text style={styles.unitText}>(Unit of {brand.brandName})</Text>
+            <Text style={styles.address}>{BUSINESS.address},</Text><Text style={styles.address}>{BUSINESS.city}, {BUSINESS.state} - {BUSINESS.pincode}</Text><Text style={styles.gstin}>GSTIN: {BUSINESS.gstin}</Text><Text style={styles.clientContact}>{brand.email}  |  {brand.phone}</Text>
+          </View></View></View>
+          <View style={[styles.card, compact ? styles.cardCompact : {}]}><View style={styles.cardHeader}><View style={styles.iconTile}><LineIcon name="user" size={16} /></View><View style={styles.cardBody}>
+            <Text style={styles.overline}>BILLED TO</Text><Text style={styles.clientName}>{billTo.name || '-'}</Text>
+            {billTo.address ? <Text style={styles.address}>{billTo.address}</Text> : null}{billTo.state ? <Text style={styles.address}>{billTo.state}</Text> : null}{billTo.gstin ? <Text style={styles.gstin}>GSTIN: {billTo.gstin}</Text> : null}{billTo.email ? <Text style={styles.clientContact}>Email: {billTo.email}</Text> : null}{billTo.phone ? <Text style={styles.clientContact}>Phone: {billTo.phone}</Text> : null}
+          </View></View></View>
+        </View>
 
-        {/* ── Title bar ── */}
-        <View style={ps.titleBar}>
-          <Text style={[ps.titleText, { color: brand.headerBg }]}>
-            {isGst ? 'TAX INVOICE' : 'RECEIPT / INVOICE'}
-          </Text>
-          <View style={ps.titleMeta}>
-            <Text style={ps.metaText}>Invoice No: {invoice.invoice_number}</Text>
-            <Text style={ps.metaText}>Date: {dmy(invoice.invoice_date)}</Text>
-            {invoice.due_date ? <Text style={ps.metaTextLast}>Due Date: {dmy(invoice.due_date)}</Text> : null}
+        <View style={[styles.supplyBar, compact ? styles.supplyBarCompact : {}]}>
+          <View style={styles.supplyCell}><View style={styles.iconTile}><LineIcon name="pin" size={15} /></View><Text style={styles.supplyLabel}>Place of Supply: <Text style={styles.supplyValue}>{invoice.place_of_supply || '-'}</Text></Text></View>
+          <View style={styles.supplyCellRight}><View style={styles.iconTile}><LineIcon name="layers" size={15} /></View><Text style={styles.supplyLabel}>Tax Type: <Text style={styles.supplyValue}>{invoice.is_igst ? 'IGST (Inter-State)' : 'CGST + SGST (Intra-State)'}</Text></Text></View>
+        </View>
+
+        <View style={[styles.table, compact ? styles.tableCompact : {}]}>
+          <View style={styles.tableHead} fixed>
+            <Text style={[styles.th, styles.rowNumber]}>#</Text><Text style={[styles.th, styles.description]}>DESCRIPTION</Text><Text style={[styles.th, styles.hsn]}>HSN/SAC</Text><Text style={[styles.th, styles.qty]}>QTY</Text><Text style={[styles.th, styles.unit]}>UNIT</Text><Text style={[styles.th, styles.rate]}>RATE (INR)</Text><Text style={[styles.th, styles.gst]}>GST%</Text><Text style={[styles.th, styles.tax]}>{invoice.is_igst ? 'IGST (INR)' : 'CGST (INR)'}</Text>{!invoice.is_igst ? <Text style={[styles.th, styles.tax]}>SGST (INR)</Text> : null}<Text style={[styles.th, styles.total]}>AMOUNT (INR)</Text>
           </View>
+          {(invoice.items || []).map((item, index) => <View key={index} wrap={false} style={[styles.tableRow, compact ? styles.tableRowCompact : {}, index % 2 === 1 ? styles.tableRowAlt : {}]}>
+            <Text style={[styles.td, styles.rowNumber]}>{index + 1}</Text><Text style={[styles.td, styles.description]}>{item.description}</Text><Text style={[styles.td, styles.hsn]}>{item.hsn_sac || '-'}</Text><Text style={[styles.td, styles.qty]}>{item.quantity}</Text><Text style={[styles.td, styles.unit]}>{item.unit}</Text><Text style={[styles.td, styles.rate]}>{number(item.rate)}</Text><Text style={[styles.td, styles.gst]}>{item.gst_rate}%</Text><Text style={[styles.td, styles.tax]}>{number(invoice.is_igst ? item.igst : item.cgst)}</Text>{!invoice.is_igst ? <Text style={[styles.td, styles.tax]}>{number(item.sgst)}</Text> : null}<Text style={[styles.td, styles.total]}>{number(item.total)}</Text>
+          </View>)}
         </View>
 
-        {/* ── Billed By / Billed To ── */}
-        <View style={ps.billedRow}>
-          <View style={ps.billBoxLeft}>
-            <Text style={ps.billLabel}>BILLED BY</Text>
-            {isGst ? (
-              <>
-                <Text style={[ps.billName, { color: brand.headerBg }]}>{BUSINESS.legalName}</Text>
-                <Text style={[ps.billUnit, { color: brand.accentColor }]}>(Unit of {brand.brandName})</Text>
-              </>
-            ) : (
-              <Text style={[ps.billName, { color: brand.headerBg }]}>{brand.brandName}</Text>
-            )}
-            <Text style={ps.billAddr}>{BUSINESS.address}</Text>
-            <Text style={ps.billAddr}>{BUSINESS.city}, {BUSINESS.state} - {BUSINESS.pincode}</Text>
-            {isGst && <Text style={[ps.billGstin, { color: brand.headerBg }]}>GSTIN: {BUSINESS.gstin}</Text>}
-            <Text style={ps.billContact}>{brand.email} · {brand.phone}</Text>
-          </View>
-          <View style={ps.billBox}>
-            <Text style={ps.billLabel}>BILLED TO</Text>
-            <Text style={[ps.billName, { color: brand.headerBg }]}>{invoice.client?.name || '\u2014'}</Text>
-            {invoice.client?.address ? <Text style={ps.billAddr}>{invoice.client.address}</Text> : null}
-            {invoice.client?.state ? <Text style={ps.billAddr}>{invoice.client.state}</Text> : null}
-            {invoice.client?.gstin ? <Text style={[ps.billGstin, { color: brand.headerBg }]}>GSTIN: {invoice.client.gstin}</Text> : null}
-            {clientContacts ? <Text style={ps.billContact}>{clientContacts}</Text> : null}
-          </View>
+        <View style={[styles.totalsArea, compact ? styles.totalsAreaCompact : {}]} wrap={false}>
+          <View style={[styles.wordsCard, compact ? styles.wordsCardCompact : {}]}><View style={styles.wordsMark}><Text style={styles.wordsMarkText}>A₹</Text></View><View style={{ flex: 1 }}><Text style={styles.wordsLabel}>AMOUNT IN WORDS</Text><Text style={styles.wordsText}>{amountToWords(invoice.total_amount)}</Text></View></View>
+          <View style={styles.totalsCard}><View style={styles.totalsBody}>
+            <View style={styles.totalLine}><Text style={styles.totalLineLabel}>Subtotal</Text><Text style={styles.totalLineValue}>{money(subtotal)}</Text></View>
+            {discountAmount > 0 ? <View style={styles.totalLine}><Text style={[styles.totalLineLabel, styles.discountLabel]}>{invoice.discount_type === 'percent' ? `Discount (${Number(invoice.discount_value || 0)}%)` : 'Discount'}</Text><Text style={[styles.totalLineValue, styles.discountLabel]}>-{money(discountAmount)}</Text></View> : null}
+            <View style={styles.totalLine}><Text style={styles.totalLineLabel}>Taxable Value</Text><Text style={styles.totalLineValue}>{money(invoice.taxable_value)}</Text></View>
+            {invoice.is_igst ? <View style={styles.totalLine}><Text style={styles.totalLineLabel}>IGST @ {igstRate}%</Text><Text style={styles.totalLineValue}>{money(invoice.igst_amount)}</Text></View> : <><View style={styles.totalLine}><Text style={styles.totalLineLabel}>CGST @ {cgstRate}%</Text><Text style={styles.totalLineValue}>{money(invoice.cgst_amount)}</Text></View><View style={styles.totalLine}><Text style={styles.totalLineLabel}>SGST @ {cgstRate}%</Text><Text style={styles.totalLineValue}>{money(invoice.sgst_amount)}</Text></View></>}
+          </View><View style={styles.grandTotal}><Text style={styles.grandLabel}>GRAND TOTAL</Text><Text style={styles.grandValue}>{money(invoice.total_amount)}</Text></View></View>
         </View>
 
-        {/* ── Supply details bar (GST only) ── */}
-        {isGst && (
-          <View style={ps.supplyBar}>
-            <Text style={ps.supplyTextFirst}>Place of Supply: {invoice.place_of_supply}</Text>
-            <Text style={ps.supplyText}>
-              Tax Type: {invoice.is_igst ? 'IGST (Inter-State)' : 'CGST + SGST (Intra-State)'}
-            </Text>
-          </View>
-        )}
+        <View style={[styles.notes, compact ? styles.notesCompact : {}]} wrap={false}><View style={styles.iconTile}><LineIcon name="notes" size={16} /></View><View style={styles.notesBody}>
+          <Text style={styles.notesTitle}>NOTES</Text>{invoice.notes ? <Text style={styles.noteLine}>•  {invoice.notes}</Text> : null}<Text style={styles.noteLine}>•  This is a computer-generated invoice and does not require a physical signature.</Text><Text style={styles.noteLine}>•  Subject to jurisdiction of Namakkal courts.</Text><Text style={styles.noteLine}>•  For any queries: {brand.email}</Text>
+        </View></View>
 
-        {/* ── Line items table ── */}
-        <View style={ps.tableWrap}>
-          {isGst ? (
-            <>
-              <View style={[ps.tableHeader, { backgroundColor: brand.headerBg }]}>
-                <Text style={[ps.th, { flex: 1 }]}>Description</Text>
-                <Text style={[ps.th, { width: C.hsn, textAlign: 'center' }]}>HSN/SAC</Text>
-                <Text style={[ps.th, { width: C.qty, textAlign: 'center' }]}>Qty</Text>
-                <Text style={[ps.th, { width: C.rate, textAlign: 'right', paddingRight: 6 }]}>Rate</Text>
-                <Text style={[ps.th, { width: C.gst, textAlign: 'center' }]}>GST%</Text>
-                {!invoice.is_igst && <Text style={[ps.th, { width: C.cgst, textAlign: 'right' }]}>CGST</Text>}
-                <Text style={[ps.th, { width: invoice.is_igst ? C.igst : C.sgst, textAlign: 'right' }]}>
-                  {invoice.is_igst ? 'IGST' : 'SGST'}
-                </Text>
-                <Text style={[ps.th, { width: C.total, textAlign: 'right', paddingRight: 8 }]}>Total</Text>
-              </View>
-              {(invoice.items || []).map((item, i) => (
-                <View key={i} style={i % 2 === 0 ? ps.tableRow : ps.tableRowAlt}>
-                  <Text style={[ps.td, { flex: 1 }]}>{item.description}</Text>
-                  <Text style={[ps.td, { width: C.hsn, textAlign: 'center' }]}>{item.hsn_sac}</Text>
-                  <Text style={[ps.td, { width: C.qty, textAlign: 'center' }]}>{item.quantity} {item.unit}</Text>
-                  <Text style={[ps.td, { width: C.rate, textAlign: 'right', paddingRight: 6 }]}>{num(item.rate)}</Text>
-                  <Text style={[ps.td, { width: C.gst, textAlign: 'center' }]}>{item.gst_rate}%</Text>
-                  {!invoice.is_igst && <Text style={[ps.td, { width: C.cgst, textAlign: 'right' }]}>{num(item.cgst)}</Text>}
-                  <Text style={[ps.td, { width: invoice.is_igst ? C.igst : C.sgst, textAlign: 'right' }]}>
-                    {num(invoice.is_igst ? item.igst : item.sgst)}
-                  </Text>
-                  <Text style={[ps.td, { width: C.total, textAlign: 'right', paddingRight: 8 }]}>{num(item.total)}</Text>
-                </View>
-              ))}
-            </>
-          ) : (
-            <>
-              <View style={[ps.tableHeader, { backgroundColor: brand.headerBg }]}>
-                <Text style={[ps.th, { flex: 1 }]}>Description</Text>
-                <Text style={[ps.th, { width: CS.qty, textAlign: 'center' }]}>Qty</Text>
-                <Text style={[ps.th, { width: CS.unit, textAlign: 'center' }]}>Unit</Text>
-                <Text style={[ps.th, { width: CS.rate, textAlign: 'right', paddingRight: 6 }]}>Rate</Text>
-                <Text style={[ps.th, { width: CS.amount, textAlign: 'right', paddingRight: 8 }]}>Amount</Text>
-              </View>
-              {(invoice.items || []).map((item, i) => (
-                <View key={i} style={i % 2 === 0 ? ps.tableRow : ps.tableRowAlt}>
-                  <Text style={[ps.td, { flex: 1 }]}>{item.description}</Text>
-                  <Text style={[ps.td, { width: CS.qty, textAlign: 'center' }]}>{item.quantity}</Text>
-                  <Text style={[ps.td, { width: CS.unit, textAlign: 'center' }]}>{item.unit}</Text>
-                  <Text style={[ps.td, { width: CS.rate, textAlign: 'right', paddingRight: 6 }]}>{num(item.rate)}</Text>
-                  <Text style={[ps.td, { width: CS.amount, textAlign: 'right', paddingRight: 8 }]}>{num(item.total)}</Text>
-                </View>
-              ))}
-            </>
-          )}
-        </View>
-
-        {/* ── Summary ── */}
-        <View style={ps.summaryOuter}>
-          <View style={ps.summaryInner}>
-            {isGst && (
-              <View style={ps.sumRow}>
-                <Text style={ps.sumLabel}>Taxable Value</Text>
-                <Text style={ps.sumValue}>{fmt(invoice.taxable_value)}</Text>
-              </View>
-            )}
-            {isGst && !invoice.is_igst && (
-              <>
-                <View style={ps.sumRow}>
-                  <Text style={ps.sumLabel}>CGST {cgstRate}%</Text>
-                  <Text style={ps.sumValue}>{fmt(invoice.cgst_amount)}</Text>
-                </View>
-                <View style={ps.sumRow}>
-                  <Text style={ps.sumLabel}>SGST {cgstRate}%</Text>
-                  <Text style={ps.sumValue}>{fmt(invoice.sgst_amount)}</Text>
-                </View>
-              </>
-            )}
-            {isGst && invoice.is_igst && (
-              <View style={ps.sumRow}>
-                <Text style={ps.sumLabel}>IGST {igstRate}%</Text>
-                <Text style={ps.sumValue}>{fmt(invoice.igst_amount)}</Text>
-              </View>
-            )}
-            <View style={[ps.totalDivider, { borderTopColor: brand.headerBg }]} />
-            <View style={ps.totalRow}>
-              <Text style={[ps.totalLabel, { color: brand.headerBg }]}>Grand Total</Text>
-              <Text style={[ps.totalValue, { color: brand.accentColor }]}>{fmt(invoice.total_amount)}</Text>
-            </View>
-          </View>
-        </View>
-
-        {/* ── Amount in words ── */}
-        <View style={ps.amountWords}>
-          <Text style={ps.amountWordsText}>
-            Amount in Words: {amountToWords(invoice.total_amount)} Only
-          </Text>
-        </View>
-
-        {/* ── Payment details (GST only) ── */}
-        {isGst && (
-          <View style={ps.paymentBox}>
-            <Text style={ps.paymentTitle}>PAYMENT DETAILS</Text>
-            <Text style={ps.paymentRow}>Bank: {BUSINESS.bank.name}</Text>
-            <Text style={ps.paymentRow}>Account Name: {BUSINESS.bank.accountName}</Text>
-            <Text style={ps.paymentRowBold}>Account No: {BUSINESS.bank.accountNumber}</Text>
-            <Text style={ps.paymentRow}>IFSC: {BUSINESS.bank.ifsc}</Text>
-            <Text style={ps.paymentRowBold}>UPI: {BUSINESS.bank.upi}</Text>
-          </View>
-        )}
-
-        {/* ── Notes ── */}
-        <View style={ps.notesBox}>
-          <Text style={ps.notesTitle}>NOTES</Text>
-          {invoice.notes ? (
-            <Text style={ps.notesContent}>{invoice.notes}</Text>
-          ) : null}
-          <Text style={ps.notesStd}>This is a computer-generated invoice and does not require a physical signature.</Text>
-          <Text style={ps.notesStd}>Subject to jurisdiction of Namakkal courts.</Text>
-          <Text style={ps.notesStd}>For any queries: {brand.email}</Text>
-        </View>
-
-        {/* ── Thank you banner ── */}
-        <View style={[ps.thanksBanner, { backgroundColor: brand.accentColor }]} fixed>
-          <Text style={ps.thanksBannerText}>THANK YOU FOR YOUR BUSINESS!</Text>
-        </View>
-
-        {/* ── Footer ── */}
-        <View style={[ps.footer, { backgroundColor: brand.headerBg }]} fixed>
-          <Text style={ps.footerText}>{brand.website}</Text>
-          <Text style={ps.footerText}>{brand.email}</Text>
-          <Text style={ps.footerText}>{brand.phone}</Text>
-        </View>
-
+        <View style={styles.footer} fixed><View style={styles.footerBody}>
+          <View style={styles.footerItem}><View style={styles.contactIcon}><LineIcon name="globe" size={11} /></View><Text style={styles.footerText}>{brand.website}</Text></View><View style={styles.footerItem}><View style={styles.contactIcon}><LineIcon name="pin" size={11} /></View><Text style={styles.footerText}>{BUSINESS.address}, {BUSINESS.city} - {BUSINESS.pincode}</Text></View><View style={styles.footerItem}><View style={styles.contactIcon}><LineIcon name="mail" size={11} /></View><Text style={styles.footerText}>{brand.email}</Text></View><View style={styles.footerItem}><View style={styles.contactIcon}><LineIcon name="phone" size={11} /></View><Text style={styles.footerText}>{brand.phone}</Text></View>
+        </View><View style={styles.footerStripe} /><View style={styles.footerRed} /></View>
       </Page>
     </Document>
   );

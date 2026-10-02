@@ -1,7 +1,7 @@
 export const BUSINESS = {
   legalName: 'Infinity Enterprises',
   gstin: '33FFZPR7059H1ZI',
-  address: '5/995/10, Ganapthi Garden, Alampalaiyam',
+  address: '5/995/10, Ganapathi Garden, Alampalayam',
   city: 'Namakkal',
   state: 'Tamil Nadu',
   pincode: '638008',
@@ -10,6 +10,9 @@ export const BUSINESS = {
     accountName: 'Infinity Enterprises',
     accountNumber: '50200115779836',
     ifsc: 'HDFC0004038',
+    branch: 'PALLIPALAYAM',
+    accountType: 'Current Account',
+    swift: 'HDFCINBBCHE',
     upi: '7708133665-3@ybl',
   },
   ritera: {

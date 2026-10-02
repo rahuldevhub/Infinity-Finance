@@ -36,6 +36,7 @@ export function PaymentReceipts() {
   const [filterBrand, setFilterBrand] = useState('');
 
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [voidReason, setVoidReason] = useState('Payment entered incorrectly');
   const [sendingEmailId, setSendingEmailId] = useState<string | null>(null);
   const [emailMessage, setEmailMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
@@ -60,9 +61,9 @@ export function PaymentReceipts() {
     label: String(y),
   }));
 
-  const totalAmount = receipts.reduce((s, r) => s + r.amount_received, 0);
+  const totalAmount = receipts.filter((receipt) => !receipt.is_void).reduce((s, r) => s + r.amount_received, 0);
 
-  const modeCount = receipts.reduce<Record<string, number>>((acc, r) => {
+  const modeCount = receipts.filter((receipt) => !receipt.is_void).reduce<Record<string, number>>((acc, r) => {
     acc[r.payment_mode] = (acc[r.payment_mode] || 0) + 1;
     return acc;
   }, {});
@@ -115,15 +116,18 @@ export function PaymentReceipts() {
 
   async function handleDownloadPDF(receipt: PaymentReceipt) {
     await downloadPDF(
-      <ReceiptPDF receipt={receipt} client={receipt.client as import('../types').Client ?? null} />,
-      `Receipt-${receipt.receipt_number}.pdf`
+      <ReceiptPDF receipt={receipt} client={receipt.client as import('../types').Client ?? null} template="modern" />,
+      `Receipt-${receipt.receipt_number}.pdf`,
+      <ReceiptPDF receipt={receipt} client={receipt.client as import('../types').Client ?? null} template="legacy" />
     );
   }
 
   async function handleDelete() {
     if (!confirmDelete) return;
-    await deleteReceipt(confirmDelete);
+    const receipt = receipts.find((item) => item.id === confirmDelete);
+    await deleteReceipt(confirmDelete, receipt?.reconciliation_managed ? voidReason : undefined);
     setConfirmDelete(null);
+    setVoidReason('Payment entered incorrectly');
   }
 
   async function handleSendEmail(receipt: PaymentReceipt) {
@@ -303,7 +307,7 @@ export function PaymentReceipts() {
                         <p className="text-xs text-gray-400 mt-0.5 truncate">{formatDate(r.date)} · {r.sub_brand}</p>
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0">
-                        <p className="text-sm font-bold text-green-700 whitespace-nowrap">{formatCurrency(r.amount_received)}</p>
+                        <p className={`text-sm font-bold whitespace-nowrap ${r.is_void ? 'text-gray-400 line-through' : 'text-green-700'}`}>{formatCurrency(r.amount_received)}</p>
                         <ChevronRight size={16} className="text-gray-300" />
                       </div>
                     </div>
@@ -430,7 +434,7 @@ export function PaymentReceipts() {
                           </span>
                         </td>
                         <td className="py-3 pr-4 text-right font-semibold text-gray-900">
-                          {formatCurrency(receipt.amount_received)}
+                          <span className={receipt.is_void ? 'text-gray-400 line-through' : ''}>{formatCurrency(receipt.amount_received)}</span>
                         </td>
                         <td className="py-3 pr-4">
                           <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700">
@@ -473,15 +477,17 @@ export function PaymentReceipts() {
                             </button>
                             <button
                               onClick={() => navigate(`/receipts/${receipt.id}/edit`)}
+                              disabled={Boolean(receipt.reconciliation_managed || receipt.is_void)}
                               className="p-1.5 text-gray-400 hover:text-blue-600 rounded hover:bg-blue-50"
-                              title="Edit"
+                              title={receipt.reconciliation_managed ? 'Reconciled payments must be voided and re-recorded' : 'Edit'}
                             >
                               <Edit size={15} />
                             </button>
                             <button
                               onClick={() => setConfirmDelete(receipt.id)}
+                              disabled={Boolean(receipt.is_void)}
                               className="p-1.5 text-gray-400 hover:text-red-600 rounded hover:bg-red-50"
-                              title="Delete"
+                              title={receipt.reconciliation_managed ? 'Void payment' : 'Delete'}
                             >
                               <Trash2 size={15} />
                             </button>
@@ -512,19 +518,24 @@ export function PaymentReceipts() {
 
       </div>
 
-      {/* Delete confirm modal */}
+      {/* Delete / void confirm modal */}
       {confirmDelete && (
-        <Modal isOpen={!!confirmDelete} onClose={() => setConfirmDelete(null)} title="Delete Receipt">
+        <Modal isOpen={!!confirmDelete} onClose={() => setConfirmDelete(null)} title={receipts.find((item) => item.id === confirmDelete)?.reconciliation_managed ? 'Void Reconciled Payment' : 'Delete Receipt'}>
           <p className="text-sm text-gray-600 mb-6">
-            Are you sure you want to delete this receipt? This action cannot be undone.
+            {receipts.find((item) => item.id === confirmDelete)?.reconciliation_managed
+              ? 'This receipt will remain in financial history but will no longer count toward received totals.'
+              : 'Are you sure you want to delete this legacy standalone receipt? This action cannot be undone.'}
           </p>
+          {receipts.find((item) => item.id === confirmDelete)?.reconciliation_managed && (
+            <div className="mb-5"><label className="block text-xs font-medium text-gray-600 mb-1">Reason for voiding</label><input value={voidReason} onChange={(event) => setVoidReason(event.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" /></div>
+          )}
           <div className="flex justify-end gap-3">
             <Button variant="secondary" onClick={() => setConfirmDelete(null)}>Cancel</Button>
             <Button
               onClick={handleDelete}
               className="bg-red-600 hover:bg-red-700 text-white"
             >
-              Delete
+              {receipts.find((item) => item.id === confirmDelete)?.reconciliation_managed ? 'Void Payment' : 'Delete'}
             </Button>
           </div>
         </Modal>
@@ -619,15 +630,17 @@ export function PaymentReceipts() {
                 </button>
                 <button
                   onClick={() => { setActionReceipt(null); navigate(`/receipts/${r.id}/edit`); }}
+                  disabled={Boolean(r.reconciliation_managed || r.is_void)}
                   className="flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold border border-gray-200 text-gray-700 active:bg-gray-50 transition-colors"
                 >
-                  <Edit size={15} /> Edit
+                  <Edit size={15} /> {r.reconciliation_managed ? 'Locked' : 'Edit'}
                 </button>
                 <button
                   onClick={() => { setActionReceipt(null); setConfirmDelete(r.id); }}
+                  disabled={Boolean(r.is_void)}
                   className="flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold text-white bg-red-600 active:opacity-90 transition-opacity"
                 >
-                  <Trash2 size={15} /> Delete
+                  <Trash2 size={15} /> {r.reconciliation_managed ? 'Void' : 'Delete'}
                 </button>
               </div>
             </div>

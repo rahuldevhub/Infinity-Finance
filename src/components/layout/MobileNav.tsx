@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
@@ -11,7 +11,7 @@ type SectionId = 'sales' | 'finance' | 'gst';
 
 const SECTION_ROUTES: Record<SectionId, string[]> = {
   sales: ['/clients', '/quotations', '/proforma', '/invoices', '/receipts'],
-  finance: ['/expenses', '/cash-flow'],
+  finance: ['/expenses', '/cash-flow', '/cash-flow-analysis'],
   gst: ['/gst-summary', '/gst-filing'],
 };
 
@@ -50,9 +50,6 @@ export function MobileNav() {
   const navigate = useNavigate();
   const [createOpen, setCreateOpen] = useState(false);
   const path = location.pathname;
-
-  // Close the create sheet whenever the route changes.
-  useEffect(() => { setCreateOpen(false); }, [path]);
 
   return (
     <>

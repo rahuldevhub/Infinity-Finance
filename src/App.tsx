@@ -12,6 +12,7 @@ import { GSTFiling } from './pages/GSTFiling';
 import { Clients } from './pages/Clients';
 import { Settings } from './pages/Settings';
 import { CashFlow } from './pages/CashFlow';
+import { CashFlowAnalysis } from './pages/CashFlowAnalysis';
 import { Quotations } from './pages/Quotations';
 import { CreateQuotation } from './pages/CreateQuotation';
 import { ProformaInvoices } from './pages/ProformaInvoices';
@@ -19,6 +20,8 @@ import { CreateProforma } from './pages/CreateProforma';
 import { PaymentReceipts } from './pages/PaymentReceipts';
 import { CreateReceipt } from './pages/CreateReceipt';
 import { SectionHub } from './pages/SectionHub';
+import { ClientDetail } from './pages/ClientDetail';
+import { ProjectDetail } from './pages/ProjectDetail';
 
 function LoadingScreen() {
   return (
@@ -66,8 +69,11 @@ function AppRoutes() {
         <Route path="/gst-summary" element={<GSTSummary />} />
         <Route path="/gst-filing" element={<GSTFiling />} />
         <Route path="/clients" element={<Clients />} />
+        <Route path="/clients/:clientId" element={<ClientDetail />} />
+        <Route path="/projects/:projectId" element={<ProjectDetail />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="/cash-flow" element={<CashFlow />} />
+        <Route path="/cash-flow-analysis" element={<CashFlowAnalysis />} />
         <Route path="/quotations" element={<Quotations />} />
         <Route path="/quotations/new" element={<CreateQuotation />} />
         <Route path="/quotations/:id/edit" element={<CreateQuotation />} />

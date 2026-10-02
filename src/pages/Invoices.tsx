@@ -25,7 +25,6 @@ export function Invoices() {
   const [filterStatus, setFilterStatus] = useState('');
   const [viewInvoice, setViewInvoice] = useState<Invoice | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
-  const [statusDropdown, setStatusDropdown] = useState<string | null>(null);
   const [toast, setToast] = useState('');
 
   const { start, end } = getMonthRange(filterYear, filterMonth);
@@ -55,8 +54,12 @@ export function Invoices() {
     await downloadPDF(element, `${inv.invoice_number}.pdf`);
   }
 
-  async function handleMarkPaid(id: string) {
-    await updateInvoice(id, { payment_status: 'paid' });
+  async function handleMarkPaid(invoice: Invoice) {
+    if (invoice.project_id) {
+      navigate(`/receipts/new?project_id=${invoice.project_id}&invoice_id=${invoice.id}`);
+      return;
+    }
+    await updateInvoice(invoice.id, { payment_status: 'paid' });
   }
 
   return (
@@ -164,44 +167,35 @@ export function Invoices() {
                   <tr key={inv.id} className="hover:bg-gray-50">
                     <td className="px-4 py-3 font-semibold text-blue-700">{inv.invoice_number}</td>
                     <td className="px-4 py-3 text-gray-600">{formatDate(inv.invoice_date)}</td>
-                    <td className="px-4 py-3 text-gray-900">{inv.client?.name}</td>
+                    <td className="px-4 py-3 text-gray-900">{inv.client_name_override || inv.client?.name}</td>
                     <td className="px-4 py-3 text-gray-500 hidden md:table-cell text-xs">{inv.sub_brand}</td>
                     <td className="px-4 py-3 text-right font-semibold text-gray-900">{formatCurrency(inv.total_amount)}</td>
                     <td className="px-4 py-3 text-center">
-                      <div className="relative inline-block">
-                        <button
-                          onClick={() => setStatusDropdown(statusDropdown === inv.id ? null : inv.id)}
-                          className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium cursor-pointer ${
+                      <div className="relative inline-flex items-center">
+                        <select
+                          value={inv.payment_status}
+                          onChange={async (event) => {
+                            const status = event.target.value as Invoice['payment_status'];
+                            await updateInvoice(inv.id, { payment_status: status });
+                            setToast(`Status updated to ${status}`);
+                            setTimeout(() => setToast(''), 3000);
+                          }}
+                          disabled={Boolean(inv.project_id)}
+                          title={inv.project_id ? 'Project payment state is derived from receipts' : 'Change legacy payment status'}
+                          aria-label={`Status for ${inv.invoice_number}`}
+                          className={`appearance-none border-0 pl-2.5 pr-6 py-1 rounded-full text-xs font-medium capitalize focus:outline-none focus:ring-2 focus:ring-blue-500/30 ${
+                            inv.project_id ? 'cursor-default' : 'cursor-pointer'
+                          } ${
                             inv.payment_status === 'paid' ? 'bg-green-100 text-green-700' :
                             inv.payment_status === 'partial' ? 'bg-red-100 text-red-700' :
                             'bg-yellow-100 text-yellow-700'
                           }`}
                         >
-                          {inv.payment_status} <ChevronDown size={10} />
-                        </button>
-                        {statusDropdown === inv.id && (
-                          <>
-                            <div className="fixed inset-0 z-10" onClick={() => setStatusDropdown(null)} />
-                            <div className="absolute left-1/2 -translate-x-1/2 top-full mt-1 z-20 bg-white border border-gray-200 rounded-lg shadow-lg py-1 min-w-[100px]">
-                              {(['pending', 'partial', 'paid'] as const).map(s => (
-                                <button
-                                  key={s}
-                                  onClick={async () => {
-                                    setStatusDropdown(null);
-                                    await updateInvoice(inv.id, { payment_status: s });
-                                    setToast(`Status updated to ${s}`);
-                                    setTimeout(() => setToast(''), 3000);
-                                  }}
-                                  className={`w-full text-left px-3 py-1.5 text-xs font-medium hover:bg-gray-50 capitalize ${
-                                    inv.payment_status === s ? 'text-blue-600' : 'text-gray-700'
-                                  }`}
-                                >
-                                  {s}
-                                </button>
-                              ))}
-                            </div>
-                          </>
-                        )}
+                          <option value="pending">Pending</option>
+                          <option value="partial">Partial</option>
+                          <option value="paid">Paid</option>
+                        </select>
+                        <ChevronDown size={11} className="pointer-events-none absolute right-2 text-current" aria-hidden="true" />
                       </div>
                     </td>
                     <td className="px-4 py-3">
@@ -216,7 +210,7 @@ export function Invoices() {
                           <Download size={15} />
                         </button>
                         {inv.payment_status !== 'paid' && (
-                          <button onClick={() => handleMarkPaid(inv.id)} className="p-1.5 rounded hover:bg-green-100 text-green-600" title="Mark Paid">
+                          <button onClick={() => handleMarkPaid(inv)} className="p-1.5 rounded hover:bg-green-100 text-green-600" title={inv.project_id ? 'Record project payment' : 'Mark Paid'}>
                             <CheckCircle size={15} />
                           </button>
                         )}
@@ -342,8 +336,8 @@ export function Invoices() {
                 </Button>
               )}
               {viewInvoice.payment_status !== 'paid' && (
-                <Button variant="secondary" onClick={() => { handleMarkPaid(viewInvoice.id); setViewInvoice(null); }}>
-                  <CheckCircle size={16} /> Mark as Paid
+                <Button variant="secondary" onClick={() => { void handleMarkPaid(viewInvoice); setViewInvoice(null); }}>
+                  <CheckCircle size={16} /> {viewInvoice.project_id ? 'Record Payment' : 'Mark as Paid'}
                 </Button>
               )}
             </div>

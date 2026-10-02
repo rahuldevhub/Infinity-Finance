@@ -5,6 +5,7 @@ registerPDFFonts();
 import { getLogo, PLACEHOLDER_LOGOS } from '../../utils/logos';
 import { BUSINESS, getBrandDetails } from '../../constants/businessDetails';
 import { amountToWords } from '../../utils/amountToWords';
+import { ProformaTemplateModern } from './ProformaTemplateModern';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -116,9 +117,10 @@ const ps = StyleSheet.create({
 interface ProformaPDFProps {
   proforma: ProformaInvoice;
   businessSettings?: BusinessSettings | null;
+  template?: 'modern' | 'legacy';
 }
 
-export function ProformaPDF({ proforma }: ProformaPDFProps) {
+export function ProformaTemplateLegacy({ proforma }: ProformaPDFProps) {
   const brand = getBrandDetails(proforma.sub_brand || '');
   const isRitera = !proforma.sub_brand?.toLowerCase().includes('ratix');
   const logoSrc = getLogo(isRitera ? 'ritera' : 'ratixinfo') || PLACEHOLDER_LOGOS[isRitera ? 'ritera' : 'ratixinfo'];
@@ -158,8 +160,8 @@ export function ProformaPDF({ proforma }: ProformaPDFProps) {
         <View style={ps.titleBar}>
           <Text style={[ps.titleText, { color: brand.headerBg }]}>PROFORMA INVOICE</Text>
           <View style={ps.titleMeta}>
-            <Text style={ps.metaText}>Proforma No: {proforma.proforma_number}</Text>
-            <Text style={ps.metaText}>Date: {dmy(proforma.date)}</Text>
+            <Text style={ps.metaText}>Proforma No: {proforma.proforma_number || 'Not issued'}</Text>
+            <Text style={ps.metaText}>Date: {proforma.date ? dmy(proforma.date) : 'Not issued'}</Text>
             {proforma.due_date ? <Text style={ps.metaTextLast}>Due: {dmy(proforma.due_date)}</Text> : null}
           </View>
         </View>
@@ -248,7 +250,7 @@ export function ProformaPDF({ proforma }: ProformaPDFProps) {
         {/* ── Amount in words ── */}
         <View style={ps.amountWords}>
           <Text style={ps.amountWordsText}>
-            Amount in Words: {amountToWords(proforma.total_amount)} Only
+            Amount in Words: {amountToWords(proforma.total_amount)}
           </Text>
         </View>
 
@@ -288,4 +290,10 @@ export function ProformaPDF({ proforma }: ProformaPDFProps) {
       </Page>
     </Document>
   );
+}
+
+export function ProformaPDF({ proforma, businessSettings, template = 'modern' }: ProformaPDFProps) {
+  return template === 'legacy'
+    ? <ProformaTemplateLegacy proforma={proforma} businessSettings={businessSettings} />
+    : <ProformaTemplateModern proforma={proforma} businessSettings={businessSettings} />;
 }

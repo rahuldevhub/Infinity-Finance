@@ -8,11 +8,12 @@ export function usePDFDownload() {
 
   const download = async (
     documentElement: ReactElement<DocumentProps>,
-    filename: string
+    filename: string,
+    fallbackDocument?: ReactElement<DocumentProps>
   ) => {
     setLoading(true)
     try {
-      await downloadPDF(documentElement, filename)
+      await downloadPDF(documentElement, filename, fallbackDocument)
     } finally {
       setLoading(false)
     }

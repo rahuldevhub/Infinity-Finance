@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import {
   ChevronRight, Users, ClipboardList, FileCheck, FileText,
-  BadgeCheck, Receipt, Wallet, BarChart2, FileCog,
+  BadgeCheck, Receipt, Wallet, BarChart2, FileCog, ChartNoAxesCombined,
 } from 'lucide-react';
 import { TopBar } from '../components/layout/TopBar';
 
@@ -32,6 +32,7 @@ const CONFIG: Record<SectionId, { title: string; subtitle: string; items: HubIte
     items: [
       { to: '/expenses', icon: Receipt, label: 'Expenses', desc: 'Spending & ITC' },
       { to: '/cash-flow', icon: Wallet, label: 'Cash Flow', desc: 'Money in & out' },
+      { to: '/cash-flow-analysis', icon: ChartNoAxesCombined, label: 'Cash Flow Analysis', desc: 'Trends, patterns & insights' },
     ],
   },
   gst: {

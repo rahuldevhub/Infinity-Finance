@@ -18,6 +18,8 @@ import { animate } from 'framer-motion';
 import { useCashFlow } from '../hooks/useCashFlow';
 import type { CashTransaction } from '../hooks/useCashFlow';
 import { useAuth } from '../hooks/useAuth';
+import { useWorkspace } from '../context/WorkspaceContext';
+import { isCompanyCode } from '../domain/company';
 import { TopBar } from '../components/layout/TopBar';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
@@ -161,13 +163,15 @@ function defaultForm() {
 
 export function CashFlow() {
   const { user } = useAuth();
+  const { workspace } = useWorkspace();
+  const company = isCompanyCode(workspace.id) ? workspace.id : 'infinity';
 
   const today = new Date();
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth());
 
   const { start, end } = getMonthRange(year, month);
-  const { transactions, loading, openingBalance, createTransaction, updateTransaction, deleteTransaction } = useCashFlow({ start, end });
+  const { transactions, loading, openingBalance, createTransaction, updateTransaction, deleteTransaction } = useCashFlow({ start, end, company });
 
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(defaultForm());
@@ -371,6 +375,7 @@ export function CashFlow() {
           payment_mode: form.payment_mode,
           reference: form.reference.trim() || null,
           sub_brand: form.sub_brand || null,
+          company,
           created_by: editingTransaction.created_by,
         });
       } else {
@@ -383,6 +388,7 @@ export function CashFlow() {
           payment_mode: form.payment_mode,
           reference: form.reference.trim() || null,
           sub_brand: form.sub_brand || null,
+          company,
           created_by: user?.id ?? '',
         });
       }

@@ -5,6 +5,7 @@ registerPDFFonts();
 import { getLogo, PLACEHOLDER_LOGOS } from '../../utils/logos';
 import { BUSINESS, getBrandDetails } from '../../constants/businessDetails';
 import { amountToWords } from '../../utils/amountToWords';
+import { invoiceClientSnapshot } from '../../domain/invoiceCompatibility';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -94,7 +95,11 @@ export function NonGSTInvoicePDF({ invoice }: NonGSTInvoicePDFProps) {
   const isRitera = !invoice.sub_brand?.toLowerCase().includes('ratix');
   const logoSrc = getLogo(isRitera ? 'ritera' : 'ratixinfo') || PLACEHOLDER_LOGOS[isRitera ? 'ritera' : 'ratixinfo'];
 
-  const clientContacts = [invoice.client?.email, invoice.client?.phone].filter(Boolean).join(' · ');
+  const billTo = invoiceClientSnapshot(invoice);
+  const discountAmount = Number(invoice.discount_amount || 0);
+  const subtotal = Number(invoice.taxable_value || 0) + discountAmount;
+  const advanceReceived = Number(invoice.advance_received || 0);
+  const balanceDue = invoice.balance_due ?? Math.max(Number(invoice.total_amount || 0) - advanceReceived, 0);
 
   return (
     <Document>
@@ -125,7 +130,7 @@ export function NonGSTInvoicePDF({ invoice }: NonGSTInvoicePDFProps) {
 
         {/* ── SECTION 3: Title bar ── */}
         <View style={s.titleBar}>
-          <Text style={s.titleText}>RECEIPT / INVOICE</Text>
+          <Text style={s.titleText}>NON-GST INVOICE</Text>
           <View style={{ alignItems: 'flex-end' }}>
             <Text style={s.titleMeta}>Invoice No: {invoice.invoice_number}</Text>
             <Text style={s.titleMeta}>Date: {dmy(invoice.invoice_date)}</Text>
@@ -143,10 +148,11 @@ export function NonGSTInvoicePDF({ invoice }: NonGSTInvoicePDFProps) {
           </View>
           <View style={s.billingBox}>
             <Text style={s.billingLabel}>BILLED TO</Text>
-            <Text style={s.billingName}>{invoice.client?.name || ''}</Text>
-            {invoice.client?.address && <Text style={s.billingAddr}>{invoice.client.address}</Text>}
-            {invoice.client?.state && <Text style={s.billingAddr}>{invoice.client.state}</Text>}
-            {clientContacts ? <Text style={s.billingContact}>{clientContacts}</Text> : null}
+            <Text style={s.billingName}>{billTo.name || ''}</Text>
+            {billTo.address && <Text style={s.billingAddr}>{billTo.address}</Text>}
+            {billTo.state && <Text style={s.billingAddr}>{billTo.state}</Text>}
+            {billTo.email ? <Text style={s.billingContact}>Email: {billTo.email}</Text> : null}
+            {billTo.phone ? <Text style={s.billingContact}>Phone: {billTo.phone}</Text> : null}
           </View>
         </View>
 
@@ -184,8 +190,9 @@ export function NonGSTInvoicePDF({ invoice }: NonGSTInvoicePDFProps) {
           <View style={{ width: '40%' }}>
             <View style={s.summaryRow}>
               <Text style={s.summaryLabel}>Subtotal</Text>
-              <Text style={s.summaryValue}>{fmt(invoice.taxable_value)}</Text>
+              <Text style={s.summaryValue}>{fmt(subtotal)}</Text>
             </View>
+            {discountAmount > 0 && <View style={s.summaryRow}><Text style={s.summaryLabel}>Discount</Text><Text style={s.summaryValue}>- {fmt(discountAmount)}</Text></View>}
             <View style={{
               borderTopWidth: 1, borderTopColor: DARK, borderTopStyle: 'solid',
               marginTop: 3, paddingTop: 5,
@@ -194,6 +201,8 @@ export function NonGSTInvoicePDF({ invoice }: NonGSTInvoicePDFProps) {
               <Text style={{ fontSize: 12, fontFamily: 'Roboto', fontWeight: 700, color: DARK }}>Grand Total</Text>
               <Text style={{ fontSize: 12, fontFamily: 'Roboto', fontWeight: 700, color: brand.accentColor }}>{fmt(invoice.total_amount)}</Text>
             </View>
+            <View style={s.summaryRow}><Text style={s.summaryLabel}>Advance Received</Text><Text style={s.summaryValue}>{fmt(advanceReceived)}</Text></View>
+            <View style={s.summaryRow}><Text style={s.summaryLabel}>Balance Due</Text><Text style={s.summaryValue}>{fmt(Number(balanceDue))}</Text></View>
           </View>
         </View>
 

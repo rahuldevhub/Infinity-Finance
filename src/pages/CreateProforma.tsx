@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Plus, Trash2, ArrowLeft, Download, Send } from 'lucide-react';
-import { pdf } from '@react-pdf/renderer';
 import { useProforma, generateProformaNumber } from '../hooks/useProforma';
 import type { ProformaItem, ProformaInvoice } from '../hooks/useProforma';
 import { ProformaPDF } from '../components/proforma/ProformaPDF';
@@ -10,12 +9,21 @@ import { useBusinessSettings } from '../hooks/useBusinessSettings';
 import { useAuth } from '../hooks/useAuth';
 import { isInterState } from '../utils/gstCalculations';
 import { formatCurrency, toLocalDateString } from '../utils/formatters';
+import type { Client } from '../types';
 import { ClientSelector } from '../components/invoice/ClientSelector';
 import { TopBar } from '../components/layout/TopBar';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Card } from '../components/ui/Card';
 import { supabase } from '../lib/supabase';
+import { amountToWords } from '../utils/amountToWords';
+import { downloadPDF as downloadPDFFile } from '../utils/downloadPDF';
+import {
+  calculateProformaItemAmount,
+  calculateProformaTotals,
+  validateProformaDiscount,
+} from '../domain/proformaCalculations';
+import { normalizeProformaDiscount } from '../domain/proformaCompatibility';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -24,6 +32,23 @@ interface LineItemRow {
   quantity: string;
   unit: string;
   rate: string;
+}
+
+interface ProformaSourceItem {
+  description?: string;
+  quantity?: number;
+  unit?: string;
+  rate?: number;
+}
+
+interface QuotationOption {
+  id: string;
+  quotation_number: string;
+  title: string;
+  project_id: string | null;
+  total_amount: number;
+  status: string;
+  client?: { name: string } | null;
 }
 
 // ── Constants ──────────────────────────────────────────────────────────────────
@@ -57,19 +82,25 @@ export function CreateProforma() {
   const [proformaDate, setProformaDate] = useState(toLocalDateString());
   const [dueDate, setDueDate] = useState('');
   const [subBrand, setSubBrand] = useState('Ritera Publishing');
+  const [company, setCompany] = useState<'ritera' | 'ratix' | 'infinity'>('ritera');
 
   // ── Client ──
-  const [selectedClient, setSelectedClient] = useState<any>(null);
+  const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [useManualClient, setUseManualClient] = useState(false);
   const [clientNameOverride, setClientNameOverride] = useState('');
   const [clientEmailOverride, setClientEmailOverride] = useState('');
 
   // ── Linked Document ──
   const [linkedQuotationId, setLinkedQuotationId] = useState<string | null>(null);
-  const [quotationOptions, setQuotationOptions] = useState<Array<{ id: string; quotation_number: string; title: string }>>([]);
+  const [linkedProjectId, setLinkedProjectId] = useState<string | null>(null);
+  const [quotationOptions, setQuotationOptions] = useState<QuotationOption[]>([]);
 
   // ── Line Items ──
   const [items, setItems] = useState<LineItemRow[]>([{ ...defaultItem }]);
+
+  // ── Discount ──
+  const [discountType, setDiscountType] = useState<'flat' | 'percent'>('percent');
+  const [discountValue, setDiscountValue] = useState('');
 
   // ── GST Options ──
   const [includeGst, setIncludeGst] = useState(true);
@@ -87,15 +118,24 @@ export function CreateProforma() {
   const [downloading, setDownloading] = useState(false);
 
   // ── Derived Totals ──
-  const taxableValue = items.reduce((sum, item) => {
-    return sum + (parseFloat(item.quantity) || 0) * (parseFloat(item.rate) || 0);
+  const subtotal = items.reduce((sum, item) => {
+    const quantity = Math.max(parseFloat(item.quantity) || 0, 0);
+    const rate = Math.max(parseFloat(item.rate) || 0, 0);
+    return sum + calculateProformaItemAmount(quantity, rate);
   }, 0);
+  const parsedDiscountValue = discountValue.trim() === '' ? 0 : Number(discountValue);
+  const discountError = validateProformaDiscount(subtotal, discountType, parsedDiscountValue);
   const isIGST = isInterState(placeOfSupplyCode);
-  const totalGST = includeGst ? (taxableValue * gstRate) / 100 : 0;
-  const cgstAmount = !isIGST && includeGst ? totalGST / 2 : 0;
-  const sgstAmount = cgstAmount;
-  const igstAmount = isIGST && includeGst ? totalGST : 0;
-  const totalAmount = taxableValue + totalGST;
+  const totals = calculateProformaTotals({
+    subtotal,
+    discountType,
+    discountValue: discountError ? 0 : parsedDiscountValue,
+    includeGst,
+    gstRate,
+    isIgst: isIGST,
+  });
+  const { discountAmount, taxableValue, cgstAmount, sgstAmount, igstAmount, totalAmount } = totals;
+  const selectedQuotation = quotationOptions.find((quotation) => quotation.id === linkedQuotationId) || null;
 
   // ── Generate proforma number ──
   useEffect(() => {
@@ -108,10 +148,10 @@ export function CreateProforma() {
   useEffect(() => {
     supabase
       .from('quotations')
-      .select('id, quotation_number, title')
+      .select('id, quotation_number, title, project_id, total_amount, status, client:clients(name)')
       .order('date', { ascending: false })
       .limit(100)
-      .then(({ data }) => setQuotationOptions((data || []) as any[]));
+      .then(({ data }) => setQuotationOptions((data || []) as unknown as QuotationOption[]));
   }, []);
 
   // ── Pre-fill from quotation URL param ──
@@ -126,10 +166,19 @@ export function CreateProforma() {
         .single();
       if (!data) return;
 
+      if (data.project_id && data.status !== 'approved') {
+        setError('Project quotations must be approved before creating a proforma.');
+        return;
+      }
+
       setLinkedQuotationId(data.id);
+      setLinkedProjectId(data.project_id || null);
       setSubBrand(data.sub_brand || 'Ritera Publishing');
+      setCompany(data.company || (data.sub_brand === 'Ratixinfo Tech' ? 'ratix' : 'ritera'));
       setIncludeGst(data.include_gst ?? true);
       setGstRate(data.gst_rate ?? 18);
+      setDiscountType((data.discount_type as 'flat' | 'percent') || 'percent');
+      setDiscountValue(data.discount_value > 0 ? String(data.discount_value) : '');
       if (data.is_igst) setPlaceOfSupplyCode('07');
 
       if (data.client) {
@@ -145,7 +194,7 @@ export function CreateProforma() {
       // Restore items (non-Ritera quotations have items array)
       if (Array.isArray(data.items) && data.items.length > 0) {
         setItems(
-          data.items.map((it: any) => ({
+          (data.items as ProformaSourceItem[]).map((it) => ({
             description: it.description || '',
             quantity: String(it.quantity ?? 1),
             unit: it.unit || 'Nos',
@@ -173,19 +222,25 @@ export function CreateProforma() {
         if (fetchError) throw fetchError;
         if (!data) return;
 
-        setProformaNumber(data.proforma_number);
-        setProformaDate(data.date);
-        setDueDate(data.due_date || '');
-        setSubBrand(data.sub_brand);
-        setLinkedQuotationId(data.quotation_id || null);
-        setIncludeGst(data.include_gst);
-        setGstRate(data.gst_rate);
-        setPlaceOfSupplyCode(data.is_igst ? '07' : '33');
-        setNotes(data.notes || DEFAULT_NOTES);
+        const proforma = normalizeProformaDiscount(data as ProformaInvoice);
 
-        if (Array.isArray(data.items) && data.items.length > 0) {
+        setProformaNumber(proforma.proforma_number || '');
+        setProformaDate(proforma.date || '');
+        setDueDate(proforma.due_date || '');
+        setSubBrand(proforma.sub_brand);
+        setCompany(proforma.company || (proforma.sub_brand === 'Ratixinfo Tech' ? 'ratix' : 'ritera'));
+        setLinkedQuotationId(proforma.quotation_id || null);
+        setLinkedProjectId(proforma.project_id || null);
+        setIncludeGst(proforma.include_gst);
+        setGstRate(proforma.gst_rate);
+        setDiscountType(proforma.discount_type || 'percent');
+        setDiscountValue(Number(proforma.discount_value || 0) > 0 ? String(proforma.discount_value) : '');
+        setPlaceOfSupplyCode(proforma.is_igst ? '07' : '33');
+        setNotes(proforma.notes || DEFAULT_NOTES);
+
+        if (Array.isArray(proforma.items) && proforma.items.length > 0) {
           setItems(
-            data.items.map((it: any) => ({
+            (proforma.items as ProformaSourceItem[]).map((it) => ({
               description: it.description || '',
               quantity: String(it.quantity ?? 1),
               unit: it.unit || 'Nos',
@@ -194,15 +249,15 @@ export function CreateProforma() {
           );
         }
 
-        if (data.client) {
-          setSelectedClient(data.client);
+        if (proforma.client) {
+          setSelectedClient(proforma.client as Client);
           setUseManualClient(false);
-        } else if (data.client_name_override) {
+        } else if (proforma.client_name_override) {
           setUseManualClient(true);
-          setClientNameOverride(data.client_name_override || '');
+          setClientNameOverride(proforma.client_name_override || '');
         }
-      } catch (e: any) {
-        setError(e.message || 'Failed to load proforma');
+      } catch (e: unknown) {
+        setError(e instanceof Error ? e.message : 'Failed to load proforma');
       } finally {
         setLoadingEdit(false);
       }
@@ -236,13 +291,18 @@ export function CreateProforma() {
       setError('At least one line item with a description is required.');
       return;
     }
+    if (validItems.some(item => !Number.isFinite(Number(item.quantity)) || Number(item.quantity) < 0 || !Number.isFinite(Number(item.rate)) || Number(item.rate) < 0)) {
+      setError('Line item quantity and rate must be valid non-negative numbers.');
+      return;
+    }
+    if (discountError) { setError(discountError); return; }
 
     const proformaItems: ProformaItem[] = validItems.map(item => ({
       description: item.description,
       quantity: parseFloat(item.quantity) || 0,
       unit: item.unit,
       rate: parseFloat(item.rate) || 0,
-      amount: (parseFloat(item.quantity) || 0) * (parseFloat(item.rate) || 0),
+      amount: calculateProformaItemAmount(parseFloat(item.quantity) || 0, parseFloat(item.rate) || 0),
     }));
 
     const payload = {
@@ -252,7 +312,9 @@ export function CreateProforma() {
       client_id: !useManualClient && selectedClient ? selectedClient.id : null,
       client_name_override: useManualClient ? clientNameOverride : null,
       sub_brand: subBrand,
+      company,
       quotation_id: linkedQuotationId || null,
+      project_id: linkedProjectId || null,
       payment_status: 'pending' as const,
       items: proformaItems,
       include_gst: includeGst,
@@ -263,6 +325,9 @@ export function CreateProforma() {
       igst_amount: igstAmount,
       is_igst: isIGST,
       total_amount: totalAmount,
+      discount_type: discountType,
+      discount_value: parsedDiscountValue,
+      discount_amount: discountAmount,
       status,
       notes: notes.trim() || null,
       created_by: user?.id || '',
@@ -277,8 +342,13 @@ export function CreateProforma() {
         const created = await createProforma(payload);
         setSavedProforma(created);
       }
-    } catch (e: any) {
-      setError(e.message || `Failed to ${isEditing ? 'update' : 'create'} proforma`);
+    } catch (e: unknown) {
+      const message = e instanceof Error
+        ? e.message
+        : typeof e === 'object' && e !== null && 'message' in e && typeof e.message === 'string'
+          ? e.message
+          : `Failed to ${isEditing ? 'update' : 'create'} proforma`;
+      setError(message);
     } finally {
       setSaving(false);
     }
@@ -293,17 +363,61 @@ export function CreateProforma() {
       const clientForPDF = selectedClient
         ? { ...selectedClient }
         : useManualClient && clientNameOverride
-        ? { name: clientNameOverride, email: clientEmailOverride || null, phone: null, address: null, state: null, gstin: null }
+        ? { name: clientNameOverride, email: clientEmailOverride || null, phone: null, address: '', state: '', gstin: null }
         : null;
-      const blob = await pdf(
-        <ProformaPDF proforma={{ ...savedProforma, client: clientForPDF }} businessSettings={settings} />
-      ).toBlob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `Proforma-${savedProforma.proforma_number}.pdf`;
-      a.click();
-      URL.revokeObjectURL(url);
+      const proformaForPDF = { ...savedProforma, client: clientForPDF };
+      await downloadPDFFile(
+        <ProformaPDF proforma={proformaForPDF} businessSettings={settings} template="modern" />,
+        `Proforma-${savedProforma.proforma_number}.pdf`,
+        <ProformaPDF proforma={proformaForPDF} businessSettings={settings} template="legacy" />,
+      );
+    } finally {
+      setDownloading(false);
+    }
+  }
+
+  async function handlePreviewPDF() {
+    setError('');
+    if (!settings) { setError('Business settings are still loading.'); return; }
+    if (!useManualClient && !selectedClient) { setError('Select a client before previewing the PDF.'); return; }
+    if (useManualClient && !clientNameOverride.trim()) { setError('Client name is required.'); return; }
+    if (discountError) { setError(discountError); return; }
+    const validItems = items.filter(item => item.description.trim());
+    if (validItems.length === 0) { setError('Add at least one line item before previewing the PDF.'); return; }
+
+    const previewClient = selectedClient || (useManualClient ? {
+      id: 'preview-client', name: clientNameOverride.trim(), email: clientEmailOverride.trim() || null,
+      phone: null, address: '', state: '', state_code: '', gstin: null, created_at: '',
+    } : null);
+    const preview: ProformaInvoice = {
+      id: 'preview', proforma_number: proformaNumber || 'DRAFT', date: proformaDate || null,
+      due_date: dueDate || null, client_id: selectedClient?.id || null,
+      client_name_override: useManualClient ? clientNameOverride.trim() : null,
+      client: previewClient, sub_brand: subBrand, company, quotation_id: linkedQuotationId,
+      project_id: linkedProjectId, quotation: selectedQuotation ? {
+        quotation_number: selectedQuotation.quotation_number, title: selectedQuotation.title,
+        status: selectedQuotation.status, total_amount: selectedQuotation.total_amount,
+      } : null,
+      items: validItems.map(item => ({
+        description: item.description.trim(), quantity: parseFloat(item.quantity) || 0,
+        unit: item.unit || 'Nos', rate: parseFloat(item.rate) || 0,
+        amount: calculateProformaItemAmount(parseFloat(item.quantity) || 0, parseFloat(item.rate) || 0),
+      })),
+      taxable_value: taxableValue, include_gst: includeGst, gst_rate: gstRate,
+      cgst_amount: cgstAmount, sgst_amount: sgstAmount, igst_amount: igstAmount,
+      is_igst: isIGST, total_amount: totalAmount, discount_type: discountType,
+      discount_value: parsedDiscountValue, discount_amount: discountAmount,
+      notes: notes.trim() || null, payment_status: 'pending', status: 'draft',
+      created_at: new Date().toISOString(), created_by: user?.id || '',
+    };
+
+    setDownloading(true);
+    try {
+      await downloadPDFFile(
+        <ProformaPDF proforma={preview} businessSettings={settings} template="modern" />,
+        `Proforma-${preview.proforma_number || 'Preview'}.pdf`,
+        <ProformaPDF proforma={preview} businessSettings={settings} template="legacy" />,
+      );
     } finally {
       setDownloading(false);
     }
@@ -453,16 +567,25 @@ export function CreateProforma() {
               </div>
             </div>
           ) : (
-            <ClientSelector
-              clients={clients}
-              selected={selectedClient}
-              onSelect={c => {
-                setSelectedClient(c);
-                if ((c as any).state_code) setPlaceOfSupplyCode((c as any).state_code);
-              }}
-              onClear={() => setSelectedClient(null)}
-              onCreateClient={createClient}
-            />
+            <div className="space-y-3">
+              <ClientSelector
+                clients={clients}
+                selected={selectedClient}
+                onSelect={c => {
+                  setSelectedClient(c);
+                  if (c.state_code) setPlaceOfSupplyCode(c.state_code);
+                }}
+                onClear={() => setSelectedClient(null)}
+                onCreateClient={createClient}
+              />
+              {selectedClient && (
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs text-gray-500 px-1">
+                  <span>{selectedClient.email || 'No email provided'}</span>
+                  <span>{selectedClient.state || 'State not provided'}</span>
+                  <span className="sm:text-right">{subBrand}</span>
+                </div>
+              )}
+            </div>
           )}
         </Card>
 
@@ -471,7 +594,11 @@ export function CreateProforma() {
           <h3 className="text-sm font-semibold text-gray-700 mb-4">Linked Quotation <span className="text-gray-400 font-normal">(optional)</span></h3>
           <select
             value={linkedQuotationId || ''}
-            onChange={e => setLinkedQuotationId(e.target.value || null)}
+            onChange={e => {
+              const quotationId = e.target.value || null;
+              setLinkedQuotationId(quotationId);
+              setLinkedProjectId(quotationOptions.find((quotation) => quotation.id === quotationId)?.project_id || null);
+            }}
             className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option value="">— None —</option>
@@ -481,12 +608,47 @@ export function CreateProforma() {
               </option>
             ))}
           </select>
+          {selectedQuotation && (
+            <div className="mt-3 grid grid-cols-1 sm:grid-cols-4 gap-3 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm">
+              <div><p className="text-xs text-gray-400">Quotation</p><p className="font-semibold text-gray-800">{selectedQuotation.quotation_number}</p></div>
+              <div><p className="text-xs text-gray-400">Client</p><p className="font-medium text-gray-700">{selectedQuotation.client?.name || 'Not linked'}</p></div>
+              <div><p className="text-xs text-gray-400">Project</p><p className="font-medium text-gray-700 truncate">{selectedQuotation.title || 'Untitled'}</p></div>
+              <div className="sm:text-right"><p className="text-xs text-gray-400">Total / status</p><p className="font-semibold text-gray-800">{formatCurrency(selectedQuotation.total_amount)} · {selectedQuotation.status}</p></div>
+            </div>
+          )}
         </Card>
 
         {/* ── Line Items ── */}
         <Card>
           <h3 className="text-sm font-semibold text-gray-700 mb-4">Line Items</h3>
-          <div className="overflow-x-auto">
+          <div className="space-y-3 md:hidden">
+            {items.map((item, i) => {
+              const amount = calculateProformaItemAmount(
+                Math.max(parseFloat(item.quantity) || 0, 0),
+                Math.max(parseFloat(item.rate) || 0, 0),
+              );
+              return (
+                <div key={i} className="rounded-lg border border-gray-200 p-3 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-gray-500">ITEM {i + 1}</span>
+                    {items.length > 1 && (
+                      <button type="button" onClick={() => removeItem(i)} className="p-1 text-gray-400 hover:text-red-500" aria-label={`Remove item ${i + 1}`}>
+                        <Trash2 size={15} />
+                      </button>
+                    )}
+                  </div>
+                  <input className="w-full border border-gray-200 rounded px-3 py-2 text-sm" value={item.description} onChange={e => updateItem(i, 'description', e.target.value)} placeholder="Description of service/product" />
+                  <div className="grid grid-cols-3 gap-2">
+                    <input className="min-w-0 w-full border border-gray-200 rounded px-2 py-2 text-sm text-right" value={item.quantity} onChange={e => updateItem(i, 'quantity', e.target.value)} type="number" min="0" aria-label="Quantity" />
+                    <input className="min-w-0 w-full border border-gray-200 rounded px-2 py-2 text-sm" value={item.unit} onChange={e => updateItem(i, 'unit', e.target.value)} placeholder="Unit" aria-label="Unit" />
+                    <input className="min-w-0 w-full border border-gray-200 rounded px-2 py-2 text-sm text-right" value={item.rate} onChange={e => updateItem(i, 'rate', e.target.value)} type="number" min="0" placeholder="Rate" aria-label="Rate" />
+                  </div>
+                  <div className="flex justify-between text-sm"><span className="text-gray-500">Amount</span><span className="font-semibold text-gray-900">{formatCurrency(amount)}</span></div>
+                </div>
+              );
+            })}
+          </div>
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-200">
@@ -641,7 +803,41 @@ export function CreateProforma() {
         {/* ── Summary ── */}
         <Card>
           <h3 className="text-sm font-semibold text-gray-700 mb-4">Summary</h3>
-          <div className="max-w-xs ml-auto space-y-2 text-sm">
+          <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_22rem] gap-6 items-start">
+            <div>
+              <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">Discount</label>
+              <div className="flex max-w-sm">
+                <Input
+                  type="number"
+                  min="0"
+                  max={discountType === 'percent' ? 100 : undefined}
+                  step="0.01"
+                  value={discountValue}
+                  onChange={event => setDiscountValue(event.target.value)}
+                  placeholder="0"
+                  className="rounded-r-none"
+                />
+                <select
+                  value={discountType}
+                  onChange={event => setDiscountType(event.target.value as 'flat' | 'percent')}
+                  className="w-24 border border-l-0 border-gray-300 rounded-r-lg px-3 text-sm font-semibold bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  aria-label="Discount type"
+                >
+                  <option value="percent">%</option>
+                  <option value="flat">₹</option>
+                </select>
+              </div>
+              {discountError ? <p className="text-xs text-red-600 mt-1.5">{discountError}</p> : <p className="text-xs text-gray-400 mt-1.5">Discount is deducted before GST.</p>}
+            </div>
+            <div className="space-y-2 text-sm rounded-xl border border-gray-200 bg-gray-50 p-4">
+              <div className="flex justify-between text-gray-600">
+                <span>Subtotal</span>
+                <span className="font-medium">{formatCurrency(subtotal)}</span>
+              </div>
+              <div className="flex justify-between text-gray-600">
+                <span>{discountType === 'percent' ? `Discount (${parsedDiscountValue || 0}%)` : 'Discount'}</span>
+                <span className={discountAmount > 0 ? 'font-medium text-red-600' : 'font-medium'}>{discountAmount > 0 ? '-' : ''}{formatCurrency(discountAmount)}</span>
+              </div>
             <div className="flex justify-between text-gray-600">
               <span>Taxable Value</span>
               <span className="font-medium">{formatCurrency(taxableValue)}</span>
@@ -665,9 +861,11 @@ export function CreateProforma() {
                 </>
               )
             )}
-            <div className="flex justify-between border-t border-gray-200 pt-2 text-base font-bold text-gray-900">
+            <div className="flex justify-between border-t border-gray-300 pt-3 text-lg font-bold text-gray-900">
               <span>Total Amount</span>
-              <span>{formatCurrency(totalAmount)}</span>
+              <span className="text-red-600">{formatCurrency(totalAmount)}</span>
+            </div>
+              <p className="pt-2 text-xs leading-5 text-gray-500 border-t border-gray-200">{amountToWords(totalAmount)}</p>
             </div>
           </div>
         </Card>
@@ -685,13 +883,21 @@ export function CreateProforma() {
         </Card>
 
         {/* ── Action Buttons ── */}
-        <div className="flex flex-wrap gap-3 justify-end pb-8">
+        <div className="sticky bottom-0 z-10 sm:static flex flex-col-reverse sm:flex-row gap-3 justify-end py-3 sm:pb-8 bg-gray-50/95 backdrop-blur sm:bg-transparent sm:backdrop-blur-none">
           <Button
             variant="secondary"
             onClick={() => navigate('/proforma')}
             disabled={saving}
           >
             Cancel
+          </Button>
+          <Button
+            variant="secondary"
+            onClick={handlePreviewPDF}
+            disabled={saving || downloading}
+          >
+            <Download size={15} className="mr-1.5" />
+            {downloading ? 'Generating…' : 'Preview PDF'}
           </Button>
           <Button
             variant="secondary"

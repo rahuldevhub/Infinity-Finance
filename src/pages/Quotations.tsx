@@ -12,6 +12,9 @@ import { Card } from '../components/ui/Card';
 import { Modal } from '../components/ui/Modal';
 import { QuotationPDF } from '../components/quotation/QuotationPDF';
 import { formatCurrency, formatDate, getMonthRange } from '../utils/formatters';
+import { acceptProjectQuotation } from '../services/projectPayments';
+import { COMPANY_LABELS } from '../domain/company';
+import { useProjects } from '../hooks/useProjects';
 
 // Maps status to a Badge variant or a custom className
 const STATUS_BADGE_VARIANT: Record<string, 'green' | 'blue' | 'gray' | 'red' | null> = {
@@ -52,15 +55,18 @@ export function Quotations() {
 
   const [viewQuotation, setViewQuotation] = useState<Quotation | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [actionError, setActionError] = useState('');
 
   const { start, end } = getMonthRange(filterYear, filterMonth);
-  const { quotations, loading, updateQuotation, deleteQuotation } = useQuotations({
+  const { quotations, loading, updateQuotation, deleteQuotation, refetch } = useQuotations({
     start,
     end,
     sub_brand: filterBrand || undefined,
     status: filterStatus || undefined,
   });
   const { settings } = useBusinessSettings();
+  const { projects } = useProjects();
+  const projectNames = new Map(projects.map((project) => [project.id, project.name]));
 
   const months = Array.from({ length: 12 }, (_, i) => ({
     value: String(i),
@@ -99,11 +105,31 @@ export function Quotations() {
   async function handleCycleStatus(q: Quotation) {
     const next = STATUS_CYCLE[q.status];
     if (!next) return;
-    await updateQuotation(q.id, { status: next });
+    setActionError('');
+    try {
+      if (next === 'approved' && q.project_id) {
+        await acceptProjectQuotation(q.id);
+        await refetch();
+      } else {
+        await updateQuotation(q.id, { status: next });
+      }
+    } catch (statusError) {
+      setActionError(statusError instanceof Error ? statusError.message : 'Quotation status could not be updated');
+    }
   }
 
   async function handleMarkConverted(q: Quotation) {
     await updateQuotation(q.id, { status: 'converted' });
+  }
+
+  async function handleApprove(q: Quotation) {
+    setActionError('');
+    try {
+      await acceptProjectQuotation(q.id);
+      await refetch();
+    } catch (approveError) {
+      setActionError(approveError instanceof Error ? approveError.message : 'Quotation approval failed');
+    }
   }
 
   const selectClass =
@@ -122,6 +148,7 @@ export function Quotations() {
       />
 
       <div className="px-4 md:px-6 py-6 space-y-4">
+        {actionError && <div className="px-4 py-3 rounded-lg border border-red-200 bg-red-50 text-sm text-red-700">{actionError}</div>}
         {/* Filters */}
         <div className="flex flex-wrap gap-3">
           <select
@@ -195,8 +222,11 @@ export function Quotations() {
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Date</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase hidden md:table-cell">Valid Until</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Client</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase hidden lg:table-cell">Sub-brand</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase hidden lg:table-cell">Project</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase hidden lg:table-cell">Company</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase hidden lg:table-cell">Title</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase hidden xl:table-cell">Updated</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase hidden xl:table-cell">Accepted</th>
                   <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Amount</th>
                   <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase">Status</th>
                   <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Actions</th>
@@ -206,7 +236,7 @@ export function Quotations() {
                 {loading ? (
                   Array.from({ length: 5 }).map((_, i) => (
                     <tr key={i}>
-                      {Array.from({ length: 9 }).map((_, j) => (
+                      {Array.from({ length: 12 }).map((_, j) => (
                         <td key={j} className="px-4 py-3">
                           <div className="h-4 bg-gray-200 rounded animate-pulse" />
                         </td>
@@ -215,7 +245,7 @@ export function Quotations() {
                   ))
                 ) : quotations.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="px-4 py-12 text-center text-gray-400">
+                    <td colSpan={12} className="px-4 py-12 text-center text-gray-400">
                       <FileText size={32} className="mx-auto mb-2 text-gray-300" />
                       No quotations found
                     </td>
@@ -230,10 +260,13 @@ export function Quotations() {
                     <td className="px-4 py-3 text-gray-900">
                       {q.client?.name || q.client_name_override || <span className="text-gray-400 italic">Unknown</span>}
                     </td>
-                    <td className="px-4 py-3 text-gray-500 text-xs hidden lg:table-cell">{q.sub_brand}</td>
+                    <td className="px-4 py-3 text-gray-600 hidden lg:table-cell">{q.project_id ? projectNames.get(q.project_id) || '—' : '—'}</td>
+                    <td className="px-4 py-3 text-gray-500 text-xs hidden lg:table-cell">{q.company ? COMPANY_LABELS[q.company] : q.sub_brand}</td>
                     <td className="px-4 py-3 text-gray-700 hidden lg:table-cell">
                       {q.title.length > 30 ? `${q.title.slice(0, 30)}…` : q.title}
                     </td>
+                    <td className="px-4 py-3 text-gray-500 text-xs hidden xl:table-cell">{formatDate(q.updated_at || q.created_at)}</td>
+                    <td className="px-4 py-3 text-gray-500 text-xs hidden xl:table-cell">{q.accepted_at ? formatDate(q.accepted_at) : '—'}</td>
                     <td className="px-4 py-3 text-right font-semibold text-gray-900">
                       {formatCurrency(q.total_amount)}
                     </td>
@@ -267,14 +300,17 @@ export function Quotations() {
                         >
                           <Download size={15} />
                         </button>
-                        <button
+                        {(q.status === 'draft' || q.status === 'sent') && <button
                           onClick={() => navigate(`/quotations/${q.id}/edit`)}
                           className="p-1.5 rounded hover:bg-blue-50 text-blue-500"
-                          title="Edit"
-                        >
-                          <Edit size={15} />
-                        </button>
-                        {(q.status === 'approved' || q.status === 'sent') && (
+                          title="Edit draft"
+                        ><Edit size={15} /></button>}
+                        {(q.status === 'draft' || q.status === 'sent') && <button
+                          onClick={() => void handleApprove(q)}
+                          className="p-1.5 rounded hover:bg-green-50 text-green-600"
+                          title="Approve / accept quotation"
+                        ><CheckCircle size={15} /></button>}
+                        {q.status === 'approved' && (
                           <button
                             onClick={() => navigate(`/proforma/new?quotation_id=${q.id}`)}
                             className="p-1.5 rounded hover:bg-blue-50 text-blue-600"
@@ -292,13 +328,11 @@ export function Quotations() {
                             <CheckCircle size={15} />
                           </button>
                         )}
-                        <button
+                        {(q.status === 'draft' || q.status === 'rejected') && <button
                           onClick={() => setConfirmDelete(q.id)}
                           className="p-1.5 rounded hover:bg-red-50 text-red-500"
                           title="Delete"
-                        >
-                          <Trash2 size={15} />
-                        </button>
+                        ><Trash2 size={15} /></button>}
                       </div>
                     </td>
                   </tr>

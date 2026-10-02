@@ -10,7 +10,10 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
+.test-dist
+coverage
 *.local
+*.tsbuildinfo
 
 # Editor directories and files
 .vscode/*
@@ -24,6 +27,21 @@ dist-ssr
 *.sw?
 
 # Environment variables — never push these
+.env
+.env.*
+!.env.example
 .env.local
 .env.production
 .env*.local
+
+# Local database backups — never commit production data
+*.dump
+*.backup
+backups/
+
+# Generated documents and local QA artifacts
+output/
+tmp/
+
+# Local Supabase CLI state
+supabase/.temp/

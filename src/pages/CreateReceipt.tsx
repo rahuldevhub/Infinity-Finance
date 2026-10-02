@@ -1,7 +1,7 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- Existing form integrates polymorphic Supabase document payloads. */
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Download, Mail, CheckCircle, AlertCircle } from 'lucide-react';
-import { pdf } from '@react-pdf/renderer';
 import { useReceipts, generateReceiptNumber } from '../hooks/useReceipts';
 import type { PaymentMode } from '../hooks/useReceipts';
 import ReceiptPDF from '../components/receipt/ReceiptPDF';
@@ -16,6 +16,9 @@ import { Card } from '../components/ui/Card';
 import { formatCurrency, toLocalDateString } from '../utils/formatters';
 import { sendReceiptEmail } from '../utils/sendReceiptEmail';
 import { supabase } from '../lib/supabase';
+import { useProjectPayments } from '../hooks/useProjectPayments';
+import { recordProjectPayment } from '../services/projectPayments';
+import { downloadPDF as downloadPDFFile } from '../utils/downloadPDF';
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 
@@ -39,6 +42,8 @@ export function CreateReceipt() {
 
   const prefillProformaId = searchParams.get('proforma_id');
   const prefillInvoiceId = searchParams.get('invoice_id');
+  const prefillProjectId = searchParams.get('project_id');
+  const prefillScheduleItemId = searchParams.get('schedule_item_id');
   const prefillAmount = searchParams.get('amount');
   const prefillTowards = searchParams.get('towards');
 
@@ -70,6 +75,11 @@ export function CreateReceipt() {
   // ── Linked ──
   const [linkedProformaId, setLinkedProformaId] = useState<string | null>(null);
   const [linkedInvoiceId, setLinkedInvoiceId] = useState<string | null>(null);
+  const [linkedProjectId, setLinkedProjectId] = useState<string | null>(prefillProjectId);
+  const [linkedScheduleItemId, setLinkedScheduleItemId] = useState<string | null>(prefillScheduleItemId);
+  const [projectName, setProjectName] = useState('');
+  const [managedPayment, setManagedPayment] = useState(false);
+  const { summary: projectPaymentSummary, installments } = useProjectPayments(linkedProjectId);
 
   // ── UI State ──
   const [saving, setSaving] = useState(false);
@@ -81,9 +91,46 @@ export function CreateReceipt() {
   // ── Generate receipt number ──
   useEffect(() => {
     if (!isEditing) {
-      generateReceiptNumber().then(setReceiptNumber).catch(() => {});
+      generateReceiptNumber(paymentDate).then(setReceiptNumber).catch(() => {});
     }
-  }, [isEditing]);
+  }, [isEditing, paymentDate]);
+
+  // ── Pre-fill from project when no invoice/proforma is the source ──
+  useEffect(() => {
+    if (!prefillProjectId || prefillProformaId || prefillInvoiceId || isEditing) return;
+    async function loadProject() {
+      const { data, error: projectError } = await supabase
+        .from('projects')
+        .select('id, name, sub_brand, client:clients(*)')
+        .eq('id', prefillProjectId)
+        .single();
+      if (projectError || !data) {
+        setError(projectError?.message || 'Project could not be loaded.');
+        return;
+      }
+      setLinkedProjectId(data.id);
+      setProjectName(data.name);
+      setTowards(data.name);
+      if (data.sub_brand) setSubBrand(data.sub_brand);
+      const projectClient = Array.isArray(data.client) ? data.client[0] : data.client;
+      if (projectClient) {
+        setSelectedClient(projectClient);
+        setUseManualClient(false);
+        if (projectClient.email) setClientEmail(projectClient.email);
+      }
+    }
+    void loadProject();
+  }, [isEditing, prefillInvoiceId, prefillProformaId, prefillProjectId]);
+
+  useEffect(() => {
+    if (!prefillScheduleItemId || amount || installments.length === 0) return;
+    const installment = installments.find((item) => item.id === prefillScheduleItemId);
+    if (!installment) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Apply the route-selected installment after its ledger data loads.
+    setLinkedScheduleItemId(installment.id);
+    setAmount(String(installment.remaining));
+    setTowards(installment.label);
+  }, [amount, installments, prefillScheduleItemId]);
 
   // ── Pre-fill from proforma URL param ──
   useEffect(() => {
@@ -98,6 +145,7 @@ export function CreateReceipt() {
       if (!data) return;
 
       setLinkedProformaId(data.id);
+      setLinkedProjectId(data.project_id || null);
       setSubBrand(data.sub_brand || 'Ritera Publishing');
       setTowards(prefillTowards || `Proforma ${data.proforma_number}`);
       if (prefillAmount) setAmount(prefillAmount);
@@ -129,6 +177,7 @@ export function CreateReceipt() {
       if (!data) return;
 
       setLinkedInvoiceId(data.id);
+      setLinkedProjectId(data.project_id || null);
       setSubBrand(data.sub_brand || 'Ritera Publishing');
       setTowards(prefillTowards || `Invoice ${data.invoice_number}`);
       if (prefillAmount) setAmount(prefillAmount);
@@ -172,6 +221,9 @@ export function CreateReceipt() {
         setNotes(data.notes || DEFAULT_NOTES);
         setLinkedProformaId(data.proforma_id || null);
         setLinkedInvoiceId(data.invoice_id || null);
+        setLinkedProjectId(data.project_id || null);
+        setLinkedScheduleItemId(data.payment_schedule_item_id || null);
+        setManagedPayment(Boolean(data.reconciliation_managed));
         if (data.client_email) setClientEmail(data.client_email);
 
         if (data.client) {
@@ -202,6 +254,10 @@ export function CreateReceipt() {
 
   async function handleSave() {
     setError('');
+    if (isEditing && managedPayment) {
+      setError('Reconciled project payments cannot be edited. Void the receipt and record a corrected payment instead.');
+      return;
+    }
     if (!receiptNumber.trim()) { setError('Receipt number is required.'); return; }
     if (!useManualClient && !selectedClient) {
       setError('Please select a client or enter client name manually.');
@@ -220,12 +276,15 @@ export function CreateReceipt() {
       client_id: !useManualClient && selectedClient ? selectedClient.id : null,
       client_name_override: useManualClient ? clientNameOverride : null,
       sub_brand: subBrand,
+      company: subBrand === 'Ratixinfo Tech' ? 'ratix' as const : subBrand === 'Infinity Enterprises' ? 'infinity' as const : 'ritera' as const,
       amount_received: amountNum,
       payment_mode: paymentMode,
       payment_reference: paymentReference.trim() || null,
       towards: towards.trim() || null,
       proforma_id: linkedProformaId || null,
       invoice_id: linkedInvoiceId || null,
+      project_id: linkedProjectId || null,
+      payment_schedule_item_id: linkedScheduleItemId || null,
       notes: notes.trim() || null,
       created_by: user?.id || '',
       client_email: clientEmail.trim() || null,
@@ -236,6 +295,31 @@ export function CreateReceipt() {
       if (isEditing && params.id) {
         await updateReceipt(params.id, payload);
         navigate('/receipts');
+      } else if (linkedProjectId) {
+        const result = await recordProjectPayment({
+          projectId: linkedProjectId,
+          receiptNumber,
+          paymentDate,
+          amount: amountNum,
+          paymentMode,
+          scheduleItemId: linkedScheduleItemId,
+          paymentReference: paymentReference.trim() || null,
+          notes: notes.trim() || null,
+          towards: towards.trim() || null,
+          proformaId: linkedProformaId,
+          invoiceId: linkedInvoiceId,
+          subBrand,
+          clientEmail: clientEmail.trim() || null,
+        });
+        const created = result.receipt;
+
+        if (sendEmail && clientEmail.trim()) {
+          const clientName = selectedClient?.name || clientNameOverride || 'Client';
+          const emailResult = await sendReceiptEmail(created, clientEmail.trim(), clientName);
+          setEmailStatus({ sent: emailResult.success, email: clientEmail.trim(), error: emailResult.error });
+        }
+
+        setSavedReceipt(created);
       } else {
         const created = await createReceipt(payload);
 
@@ -265,15 +349,11 @@ export function CreateReceipt() {
         : useManualClient && clientNameOverride
         ? { name: clientNameOverride, email: null, address: null }
         : null;
-      const blob = await pdf(
-        <ReceiptPDF receipt={{ ...savedReceipt, client: clientForPDF }} client={clientForPDF} />
-      ).toBlob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `Receipt-${savedReceipt.receipt_number}.pdf`;
-      a.click();
-      URL.revokeObjectURL(url);
+      await downloadPDFFile(
+        <ReceiptPDF receipt={{ ...savedReceipt, client: clientForPDF }} client={clientForPDF} template="modern" />,
+        `Receipt-${savedReceipt.receipt_number}.pdf`,
+        <ReceiptPDF receipt={{ ...savedReceipt, client: clientForPDF }} client={clientForPDF} template="legacy" />,
+      );
     } finally {
       setDownloading(false);
     }
@@ -317,7 +397,7 @@ export function CreateReceipt() {
               {downloading ? 'Generating PDF…' : 'Download PDF'}
             </Button>
             <Button onClick={() => navigate('/receipts/new')}>Create Another</Button>
-            <Button variant="secondary" onClick={() => navigate('/receipts')}>View All Receipts</Button>
+            <Button variant="secondary" onClick={() => navigate(linkedProjectId ? `/projects/${linkedProjectId}` : '/receipts')}>{linkedProjectId ? 'Back to Project' : 'View All Receipts'}</Button>
           </div>
         </div>
       </div>
@@ -343,7 +423,7 @@ export function CreateReceipt() {
 
         {/* Back link */}
         <button
-          onClick={() => navigate('/receipts')}
+          onClick={() => navigate(linkedProjectId ? `/projects/${linkedProjectId}` : '/receipts')}
           className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700"
         >
           <ArrowLeft size={16} /> Back to Receipts
@@ -352,6 +432,24 @@ export function CreateReceipt() {
         {/* Error */}
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">{error}</div>
+        )}
+
+        {linkedProjectId && (
+          <Card>
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-xs uppercase font-semibold text-gray-400">Project Payment</p>
+                <p className="font-bold text-gray-900 mt-1">{projectName || 'Linked project'}</p>
+                <p className="text-sm text-gray-500 mt-1">{selectedClient?.name || 'Project client'}</p>
+              </div>
+              <span className="px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-semibold capitalize">{projectPaymentSummary?.payment_state || 'loading'}</span>
+            </div>
+            <div className="grid grid-cols-3 gap-3 mt-4 text-sm">
+              <div><p className="text-xs text-gray-400">Contract</p><p className="font-semibold">{projectPaymentSummary?.contract_value == null ? '—' : formatCurrency(projectPaymentSummary.contract_value)}</p></div>
+              <div><p className="text-xs text-gray-400">Received</p><p className="font-semibold text-green-700">{formatCurrency(projectPaymentSummary?.total_received || 0)}</p></div>
+              <div><p className="text-xs text-gray-400">Outstanding</p><p className="font-semibold text-amber-700">{projectPaymentSummary?.outstanding == null ? '—' : formatCurrency(projectPaymentSummary.outstanding)}</p></div>
+            </div>
+          </Card>
         )}
 
         {/* ── Receipt Details ── */}
@@ -457,6 +555,31 @@ export function CreateReceipt() {
         {/* ── Amount ── */}
         <Card>
           <h3 className="text-sm font-semibold text-gray-700 mb-4">Amount Received</h3>
+          {linkedProjectId && installments.length > 0 && (
+            <div className="mb-4">
+              <label className="block text-xs font-medium text-gray-600 mb-1">Payment installment</label>
+              <select
+                value={linkedScheduleItemId || ''}
+                onChange={(event) => {
+                  const installmentId = event.target.value || null;
+                  setLinkedScheduleItemId(installmentId);
+                  const installment = installments.find((item) => item.id === installmentId);
+                  if (installment) {
+                    setAmount(String(installment.remaining));
+                    setTowards(installment.label);
+                  }
+                }}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">General project balance</option>
+                {installments.map((item) => (
+                  <option key={item.id} value={item.id} disabled={item.remaining <= 0}>
+                    {item.installment_number}. {item.label} — {formatCurrency(item.remaining)} remaining
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
           <div className="relative">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-medium text-sm">INR</span>
             <input
@@ -542,13 +665,13 @@ export function CreateReceipt() {
 
         {/* ── Action Buttons ── */}
         <div className="flex gap-3 justify-end pb-8">
-          <Button variant="secondary" onClick={() => navigate('/receipts')} disabled={saving}>
+          <Button variant="secondary" onClick={() => navigate(linkedProjectId ? `/projects/${linkedProjectId}` : '/receipts')} disabled={saving}>
             Cancel
           </Button>
           <Button onClick={handleSave} disabled={saving}>
             {saving
               ? (sendEmail && clientEmail.trim() ? 'Saving & Sending…' : 'Saving…')
-              : isEditing ? 'Update Receipt' : 'Create Receipt'}
+              : isEditing ? 'Update Receipt' : linkedProjectId ? 'Record Payment & Create Receipt' : 'Create Receipt'}
           </Button>
         </div>
 

@@ -1,6 +1,8 @@
-import { useState } from 'react';
-import { Plus, Edit2, Trash2, Search, Users, ShieldCheck, Building2, UserPlus, ChevronRight } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { Building2, ChevronRight, Edit2, Plus, Search, ShieldCheck, UserPlus, Users } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useClients } from '../hooks/useClients';
+import { useWorkspace } from '../context/WorkspaceContext';
 import type { Client } from '../types';
 import { INDIAN_STATES } from '../types';
 import { TopBar } from '../components/layout/TopBar';
@@ -8,469 +10,184 @@ import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Card } from '../components/ui/Card';
 import { Modal } from '../components/ui/Modal';
+import { ClientOnboardingForm } from '../components/client/ClientOnboardingForm';
+import { ClientWorkspaceDrawer } from '../components/client/ClientWorkspaceDrawer';
 import { formatDate } from '../utils/formatters';
+import { COMPANY_CODES, COMPANY_LABELS, requireNewClientCompany, type CompanyCode } from '../domain/company';
+import { supabase } from '../lib/supabase';
 
-// Initials + deterministic neutral tint for client avatars (green/red reserved
-// for financial meaning, so avatars stay slate/blue/amber).
-function initials(name: string) {
-  const parts = name.trim().split(/\s+/);
-  return ((parts[0]?.[0] ?? '') + (parts[1]?.[0] ?? '')).toUpperCase() || '?';
-}
-
-const AVATAR_TINTS = [
-  { bg: '#f1f5f9', fg: '#334155' },
-  { bg: '#eff6ff', fg: '#2563eb' },
-  { bg: '#eef2ff', fg: '#4f46e5' },
-  { bg: '#f0f9ff', fg: '#0284c7' },
-  { bg: '#fffbeb', fg: '#d97706' },
-];
-
-function tintFor(name: string) {
-  let h = 0;
-  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
-  return AVATAR_TINTS[h % AVATAR_TINTS.length];
-}
+type ClientFilter = 'all' | 'gst' | 'b2c';
 
 const emptyForm = {
-  name: '',
-  gstin: '',
-  address: '',
-  state: '',
-  state_code: '',
-  email: '',
-  phone: '',
+  name: '', gstin: '', address: '', state: '', state_code: '', email: '', phone: '', default_company: 'ritera' as CompanyCode,
 };
 
-export function Clients() {
-  const [search, setSearch] = useState('');
-  const { clients, loading, createClient, updateClient, deleteClient } = useClients(
-    search || undefined
-  );
+const AVATAR_TINTS = [
+  'bg-slate-100 text-slate-700', 'bg-blue-50 text-blue-700', 'bg-indigo-50 text-indigo-700', 'bg-sky-50 text-sky-700', 'bg-amber-50 text-amber-700',
+];
 
-  const total = clients.length;
-  const gstCount = clients.filter((c) => c.gstin).length;
-  const nonGst = total - gstCount;
+function initials(name: string) {
+  return name.trim().split(/\s+/).slice(0, 2).map((part) => part[0]).join('').toUpperCase() || '?';
+}
+
+function tintFor(name: string) {
+  let hash = 0;
+  for (let index = 0; index < name.length; index += 1) hash = (hash * 31 + name.charCodeAt(index)) >>> 0;
+  return AVATAR_TINTS[hash % AVATAR_TINTS.length];
+}
+
+export function Clients() {
+  const navigate = useNavigate();
+  const { workspace } = useWorkspace();
+  const { clients, loading, createClient, updateClient, refetch } = useClients();
+  const [search, setSearch] = useState('');
+  const [filter, setFilter] = useState<ClientFilter>('all');
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Client | null>(null);
+  const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
-  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
-  const [deleteError, setDeleteError] = useState('');
+  const [projectCounts, setProjectCounts] = useState<Record<string, number>>({});
+
+  const scopedClients = useMemo(() => workspace.id === 'infinity'
+    ? clients
+    : clients.filter((client) => client.default_company === workspace.id), [clients, workspace.id]);
+
+  const filteredClients = useMemo(() => {
+    const needle = search.trim().toLowerCase();
+    return scopedClients.filter((client) => {
+      if (filter === 'gst' && !client.gstin) return false;
+      if (filter === 'b2c' && client.gstin) return false;
+      if (!needle) return true;
+      const company = client.default_company ? COMPANY_LABELS[client.default_company] : 'legacy client';
+      return [client.name, company, client.email, client.phone, client.gstin].some((value) => value?.toLowerCase().includes(needle));
+    });
+  }, [filter, scopedClients, search]);
+
+  const gstCount = scopedClients.filter((client) => client.gstin).length;
+  const b2cCount = scopedClients.length - gstCount;
+
+  useEffect(() => {
+    let cancelled = false;
+    void supabase.from('projects').select('client_id, company, sub_brand').then(({ data, error }) => {
+      if (cancelled || error) return;
+      const visibleClientIds = new Set(scopedClients.map((client) => client.id));
+      const counts = (data || []).reduce<Record<string, number>>((result, row) => {
+        if (!visibleClientIds.has(row.client_id)) return result;
+        const belongs = workspace.id === 'infinity' || row.company === workspace.id || row.sub_brand?.toLowerCase().includes(workspace.id === 'ratix' ? 'ratix' : 'ritera');
+        if (belongs) result[row.client_id] = (result[row.client_id] || 0) + 1;
+        return result;
+      }, {});
+      setProjectCounts(counts);
+    });
+    return () => { cancelled = true; };
+  }, [scopedClients, workspace.id]);
 
   function openCreate() {
+    const defaultCompany = COMPANY_CODES.includes(workspace.id as CompanyCode) ? workspace.id as CompanyCode : 'ritera';
     setEditing(null);
-    setForm(emptyForm);
+    setForm({ ...emptyForm, default_company: defaultCompany });
     setShowForm(true);
   }
 
-  function openEdit(c: Client) {
-    setEditing(c);
+  function openEdit(client: Client) {
+    setEditing(client);
     setForm({
-      name: c.name,
-      gstin: c.gstin || '',
-      address: c.address,
-      state: c.state,
-      state_code: c.state_code,
-      email: c.email || '',
-      phone: c.phone || '',
+      name: client.name,
+      gstin: client.gstin || '',
+      address: client.address,
+      state: client.state,
+      state_code: client.state_code,
+      email: client.email || '',
+      phone: client.phone || '',
+      default_company: client.default_company || 'ritera',
     });
     setShowForm(true);
   }
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  async function handleSubmit(event: React.FormEvent) {
+    event.preventDefault();
     setSaving(true);
     try {
-      const payload = {
-        ...form,
-        gstin: form.gstin || null,
-        email: form.email || null,
-        phone: form.phone || null,
-      };
-      if (editing) {
-        await updateClient(editing.id, payload);
-      } else {
-        await createClient(payload);
+      const payload = { ...form, gstin: form.gstin || null, email: form.email || null, phone: form.phone || null, default_company: requireNewClientCompany(form.default_company) };
+      if (editing) await updateClient(editing.id, payload);
+      else {
+        const created = await createClient(payload);
+        setShowForm(false);
+        navigate(`/clients/${created.id}`);
+        return;
       }
       setShowForm(false);
+      if (selectedClient?.id === editing?.id) setSelectedClient({ ...selectedClient, ...payload });
     } finally {
       setSaving(false);
     }
   }
 
-  async function handleDelete(id: string) {
-    setDeleteError('');
-    try {
-      await deleteClient(id);
-      setConfirmDelete(null);
-    } catch (e: any) {
-      setDeleteError('Cannot delete: client has existing invoices.');
-    }
-  }
-
   return (
     <div>
-      <TopBar
-        title="Clients"
-        subtitle="Manage your customers"
-        actions={
-          <Button size="sm" onClick={openCreate} aria-label="Add Client">
-            <Plus size={16} /> <span className="hidden sm:inline">Add Client</span>
-          </Button>
-        }
-      />
+      <TopBar title="Clients" subtitle={`${workspace.name} · client workspace`} actions={<Button size="sm" onClick={openCreate}><Plus size={16} /><span className="hidden sm:inline">Add client</span></Button>} />
 
-      <div className="px-4 md:px-6 py-5 md:py-6 space-y-4 md:space-y-5">
-        {/* Top metrics — desktop */}
-        <div className="hidden md:grid md:grid-cols-3 gap-4">
-          <div className="card-surface hover-lift p-4 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'rgba(var(--accent-rgb),0.07)' }}>
-              <Users size={18} style={{ color: 'var(--accent)' }} />
-            </div>
-            <div className="min-w-0">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Total Clients</p>
-              <p className="text-2xl font-extrabold text-gray-900" style={{ fontFamily: '"Nunito", ui-rounded, sans-serif', letterSpacing: '-0.02em' }}>{total}</p>
-            </div>
-          </div>
-          <div className="card-surface hover-lift p-4 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
-              <ShieldCheck size={18} className="text-blue-600" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">GST-Registered</p>
-              <p className="text-2xl font-extrabold text-gray-900" style={{ fontFamily: '"Nunito", ui-rounded, sans-serif', letterSpacing: '-0.02em' }}>{gstCount}</p>
-            </div>
-          </div>
-          <div className="card-surface hover-lift p-4 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center shrink-0">
-              <Building2 size={18} className="text-gray-500" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Non-GST (B2C)</p>
-              <p className="text-2xl font-extrabold text-gray-900" style={{ fontFamily: '"Nunito", ui-rounded, sans-serif', letterSpacing: '-0.02em' }}>{nonGst}</p>
-            </div>
-          </div>
-        </div>
+      <main className="space-y-5 px-4 py-5 md:px-6 md:py-6">
+        <section className="grid grid-cols-3 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm" aria-label="Client summary">
+          {[
+            { label: 'Total clients', value: scopedClients.length, icon: Users, tone: 'text-slate-700 bg-slate-100' },
+            { label: 'GST registered', value: gstCount, icon: ShieldCheck, tone: 'text-blue-700 bg-blue-50' },
+            { label: 'B2C', value: b2cCount, icon: Building2, tone: 'text-slate-500 bg-slate-50' },
+          ].map((item, index) => <div key={item.label} className={`flex min-w-0 items-center gap-3 px-3 py-4 sm:px-5 ${index ? 'border-l border-slate-200' : ''}`}><div className={`hidden h-9 w-9 shrink-0 items-center justify-center rounded-lg sm:flex ${item.tone}`}><item.icon size={17} /></div><div className="min-w-0"><p className="truncate text-[10px] font-bold uppercase tracking-wider text-slate-400 sm:text-[11px]">{item.label}</p><p className="mt-0.5 text-xl font-extrabold tabular-nums text-slate-950 sm:text-2xl">{item.value}</p></div></div>)}
+        </section>
 
-        {/* Top metrics — mobile */}
-        <div className="md:hidden space-y-3">
-          <div className="card-surface p-4 flex items-center gap-3">
-            <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'rgba(var(--accent-rgb),0.07)' }}>
-              <Users size={20} style={{ color: 'var(--accent)' }} />
-            </div>
-            <div className="min-w-0">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Total Clients</p>
-              <p className="text-3xl font-extrabold text-gray-900" style={{ fontFamily: '"Nunito", ui-rounded, sans-serif', letterSpacing: '-0.02em' }}>{total}</p>
-            </div>
+        <section className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="relative w-full lg:max-w-xl">
+            <Search size={17} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search name, company, email, phone or GSTIN" aria-label="Search clients" className="min-h-11 w-full rounded-xl border border-slate-300 bg-white pl-10 pr-4 text-sm text-slate-900 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200" />
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="card-surface p-3.5">
-              <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center mb-2">
-                <ShieldCheck size={16} className="text-blue-600" />
-              </div>
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">GST</p>
-              <p className="text-xl font-extrabold text-gray-900" style={{ fontFamily: '"Nunito", ui-rounded, sans-serif', letterSpacing: '-0.02em' }}>{gstCount}</p>
-            </div>
-            <div className="card-surface p-3.5">
-              <div className="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center mb-2">
-                <Building2 size={16} className="text-gray-500" />
-              </div>
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Non-GST</p>
-              <p className="text-xl font-extrabold text-gray-900" style={{ fontFamily: '"Nunito", ui-rounded, sans-serif', letterSpacing: '-0.02em' }}>{nonGst}</p>
-            </div>
+          <div className="inline-flex w-full rounded-xl border border-slate-200 bg-slate-100 p-1 lg:w-auto" role="group" aria-label="Filter clients">
+            {([['all', 'All', scopedClients.length], ['gst', 'GST', gstCount], ['b2c', 'B2C', b2cCount]] as const).map(([id, label, count]) => <button key={id} onClick={() => setFilter(id)} className={`min-h-9 flex-1 rounded-lg px-3 text-xs font-bold transition lg:flex-none ${filter === id ? 'bg-white text-slate-950 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}>{label} <span className="ml-1 text-slate-400">{count}</span></button>)}
           </div>
-        </div>
+        </section>
 
-        {/* Search */}
-        <div className="relative w-full md:max-w-xs">
-          <Search size={16} className="absolute left-3.5 md:left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search clients..."
-            className="w-full pl-10 md:pl-9 pr-4 py-3 md:py-2 border border-gray-200 rounded-xl md:rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-slate-300"
-          />
-        </div>
-
-        {/* Client list — mobile */}
-        <div className="md:hidden space-y-2.5">
-          {loading ? (
-            Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="card-surface p-4 flex items-center gap-3">
-                <div className="w-11 h-11 rounded-full bg-gray-100 animate-pulse shrink-0" />
-                <div className="flex-1 space-y-2">
-                  <div className="h-3.5 bg-gray-100 rounded animate-pulse w-2/3" />
-                  <div className="h-3 bg-gray-100 rounded animate-pulse w-1/3" />
-                </div>
-              </div>
-            ))
-          ) : clients.length === 0 ? (
-            search ? (
-              <p className="text-sm text-gray-400 text-center py-16">No clients match "{search}".</p>
-            ) : (
-              <div className="card-surface flex flex-col items-center gap-3 text-center py-10 px-4">
-                <div className="w-12 h-12 rounded-2xl bg-gray-50 flex items-center justify-center">
-                  <Users size={22} className="text-gray-300" />
-                </div>
-                <div>
-                  <p className="text-gray-700 font-semibold">No clients yet</p>
-                  <p className="text-sm text-gray-400 mt-0.5">Add your first client to start invoicing.</p>
-                </div>
-                <button
-                  onClick={openCreate}
-                  className="mt-1 inline-flex items-center gap-2 px-4 py-2.5 text-white rounded-lg text-sm font-medium active:opacity-90 transition-opacity"
-                  style={{ background: 'var(--accent)' }}
-                >
-                  <Plus size={14} /> Add Client
-                </button>
-              </div>
-            )
-          ) : (
-            clients.map((c) => {
-              const tint = tintFor(c.name);
-              return (
-                <div
-                  key={c.id}
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => openEdit(c)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openEdit(c); }
-                  }}
-                  className="card-surface flex items-center gap-3 p-4 active:bg-gray-50 transition-colors cursor-pointer"
-                >
-                  <div
-                    className="w-11 h-11 rounded-full flex items-center justify-center text-sm font-bold shrink-0"
-                    style={{ background: tint.bg, color: tint.fg }}
-                  >
-                    {initials(c.name)}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="font-semibold text-gray-900 truncate">{c.name}</p>
-                    {c.gstin ? (
-                      <>
-                        <p className="text-xs text-gray-400 mt-0.5">GST Registered</p>
-                        <p className="text-[11px] font-mono text-gray-400 truncate">{c.gstin}</p>
-                      </>
-                    ) : (
-                      <p className="text-xs text-gray-400 mt-0.5">Non-GST</p>
-                    )}
-                  </div>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); setDeleteError(''); setConfirmDelete(c.id); }}
-                    className="p-2 -m-2 rounded-lg text-gray-300 active:bg-red-50 active:text-red-500 shrink-0"
-                    aria-label="Delete client"
-                  >
-                    <Trash2 size={16} />
-                  </button>
-                  <ChevronRight size={18} className="text-gray-300 shrink-0" />
-                </div>
-              );
-            })
-          )}
-        </div>
-
-        <Card padding={false} className="hidden md:block">
-          <div className="overflow-x-auto">
+        <Card padding={false}>
+          <div className="hidden overflow-x-auto md:block">
             <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-gray-100 bg-gray-50/60">
-                  {['Client', 'GSTIN', 'State', 'Email', 'Phone', 'Added', ''].map((h, i) => (
-                    <th
-                      key={i}
-                      className="px-5 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide"
-                    >
-                      {h}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50">
-                {loading ? (
-                  Array.from({ length: 5 }).map((_, i) => (
-                    <tr key={i}>
-                      {Array.from({ length: 7 }).map((_, j) => (
-                        <td key={j} className="px-5 py-4">
-                          <div className="h-4 bg-gray-200 rounded animate-pulse" />
-                        </td>
-                      ))}
-                    </tr>
-                  ))
-                ) : clients.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="px-5 py-16 text-center">
-                      {search ? (
-                        <p className="text-sm text-gray-400">No clients match “{search}”.</p>
-                      ) : (
-                        <div className="flex flex-col items-center gap-3">
-                          <div className="w-12 h-12 rounded-2xl bg-gray-50 flex items-center justify-center">
-                            <Users size={22} className="text-gray-300" />
-                          </div>
-                          <div>
-                            <p className="text-gray-700 font-semibold">No clients yet</p>
-                            <p className="text-sm text-gray-400 mt-0.5">Add your first client to start invoicing.</p>
-                          </div>
-                          <button
-                            onClick={openCreate}
-                            className="mt-1 inline-flex items-center gap-2 px-4 py-2 text-white rounded-lg text-sm font-medium transition-opacity hover:opacity-90"
-                            style={{ background: 'var(--accent)' }}
-                          >
-                            <Plus size={14} /> Add Client
-                          </button>
-                        </div>
-                      )}
-                    </td>
-                  </tr>
-                ) : (
-                  clients.map((c) => {
-                    const tint = tintFor(c.name);
-                    return (
-                      <tr key={c.id} className="group hover:bg-gray-50 transition-colors">
-                        <td className="px-5 py-4">
-                          <div className="flex items-center gap-3">
-                            <div
-                              className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
-                              style={{ background: tint.bg, color: tint.fg }}
-                            >
-                              {initials(c.name)}
-                            </div>
-                            <span className="font-semibold text-gray-900">{c.name}</span>
-                          </div>
-                        </td>
-                        <td className="px-5 py-4">
-                          {c.gstin ? (
-                            <span className="font-mono text-xs text-gray-600">{c.gstin}</span>
-                          ) : (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-gray-100 text-gray-500">B2C</span>
-                          )}
-                        </td>
-                        <td className="px-5 py-4 text-gray-600">{c.state || '—'}</td>
-                        <td className="px-5 py-4 text-gray-500">{c.email || '—'}</td>
-                        <td className="px-5 py-4 text-gray-500">{c.phone || '—'}</td>
-                        <td className="px-5 py-4 text-gray-400">{formatDate(c.created_at)}</td>
-                        <td className="px-5 py-4">
-                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
-                            <button
-                              onClick={() => openEdit(c)}
-                              className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500"
-                              title="Edit"
-                            >
-                              <Edit2 size={14} />
-                            </button>
-                            <button
-                              onClick={() => {
-                                setDeleteError('');
-                                setConfirmDelete(c.id);
-                              }}
-                              className="p-1.5 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500"
-                              title="Delete"
-                            >
-                              <Trash2 size={14} />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
+              <thead><tr className="border-b border-slate-200 bg-slate-50/80">{['Client', 'Company', 'Projects', 'GST status', 'Location', 'Contact', 'Added', ''].map((heading) => <th key={heading} className="px-5 py-3.5 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">{heading}</th>)}</tr></thead>
+              <tbody className="divide-y divide-slate-100">
+                {loading ? Array.from({ length: 5 }).map((_, row) => <tr key={row}>{Array.from({ length: 8 }).map((__, cell) => <td key={cell} className="px-5 py-4"><div className="h-4 animate-pulse rounded bg-slate-100" /></td>)}</tr>) : filteredClients.map((client) => <tr key={client.id} onClick={() => setSelectedClient(client)} className="group cursor-pointer transition hover:bg-slate-50/80 focus-within:bg-slate-50/80">
+                  <td className="px-5 py-4"><div className="flex items-center gap-3"><div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold ${tintFor(client.name)}`}>{initials(client.name)}</div><div className="min-w-0"><p className="font-bold text-slate-900">{client.name}</p><p className="max-w-52 truncate text-xs text-slate-400">{client.email || 'No email'}</p></div></div></td>
+                  <td className="px-5 py-4 text-slate-600">{client.default_company ? COMPANY_LABELS[client.default_company] : <span className="text-slate-400">Legacy</span>}</td>
+                  <td className="px-5 py-4 font-semibold tabular-nums text-slate-700">{projectCounts[client.id] ?? 0}</td>
+                  <td className="px-5 py-4">{client.gstin ? <span className="rounded-full bg-blue-50 px-2 py-1 text-[11px] font-bold text-blue-700">GST</span> : <span className="rounded-full bg-slate-100 px-2 py-1 text-[11px] font-bold text-slate-600">B2C</span>}</td>
+                  <td className="px-5 py-4 text-slate-600">{client.state || '—'}</td>
+                  <td className="px-5 py-4"><p className="text-slate-600">{client.phone || '—'}</p>{client.gstin && <p className="mt-0.5 font-mono text-[11px] text-slate-400">{client.gstin}</p>}</td>
+                  <td className="px-5 py-4 text-slate-400">{formatDate(client.created_at)}</td>
+                  <td className="px-5 py-4"><button onClick={(event) => { event.stopPropagation(); openEdit(client); }} className="rounded-lg p-2 text-slate-400 opacity-0 transition hover:bg-white hover:text-slate-700 group-hover:opacity-100 focus:opacity-100" aria-label={`Edit ${client.name}`}><Edit2 size={15} /></button></td>
+                </tr>)}
               </tbody>
             </table>
           </div>
-        </Card>
-      </div>
 
-      {/* Add/Edit Modal */}
-      <Modal
-        isOpen={showForm}
-        onClose={() => setShowForm(false)}
-        title={editing ? 'Edit Client' : 'New Client'}
-        icon={<UserPlus size={18} />}
-      >
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <Input
-            label="Name"
-            value={form.name}
-            onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-            required
-            placeholder="Client / Company Name"
-          />
-          <Input
-            label="GSTIN (optional)"
-            value={form.gstin}
-            onChange={(e) => setForm((f) => ({ ...f, gstin: e.target.value }))}
-            placeholder="22AAAAA0000A1Z5"
-          />
-          <Input
-            label="Address"
-            value={form.address}
-            onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
-            placeholder="Full billing address"
-          />
-          <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium text-gray-700">State</label>
-            <select
-              value={form.state_code}
-              onChange={(e) => {
-                const s = INDIAN_STATES.find((st) => st.code === e.target.value);
-                setForm((f) => ({
-                  ...f,
-                  state_code: e.target.value,
-                  state: s?.name || '',
-                }));
-              }}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">Select State</option>
-              {INDIAN_STATES.map((s) => (
-                <option key={s.code} value={s.code}>
-                  {s.name} ({s.code})
-                </option>
-              ))}
-            </select>
+          <div className="divide-y divide-slate-100 md:hidden">
+            {loading ? Array.from({ length: 4 }).map((_, index) => <div key={index} className="h-20 animate-pulse bg-slate-50" />) : filteredClients.map((client) => <button key={client.id} onClick={() => setSelectedClient(client)} className="flex min-h-[76px] w-full items-center gap-3 px-4 py-3 text-left active:bg-slate-50"><div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-sm font-bold ${tintFor(client.name)}`}>{initials(client.name)}</div><div className="min-w-0 flex-1"><div className="flex items-center gap-2"><p className="truncate font-bold text-slate-900">{client.name}</p><span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${client.gstin ? 'bg-blue-50 text-blue-700' : 'bg-slate-100 text-slate-600'}`}>{client.gstin ? 'GST' : 'B2C'}</span></div><p className="mt-0.5 truncate text-xs text-slate-500">{client.email || client.phone || client.state || 'No contact details'}</p><p className="mt-0.5 text-[11px] text-slate-400">{projectCounts[client.id] ?? 0} projects · {client.default_company ? COMPANY_LABELS[client.default_company] : 'Legacy client'}</p></div><ChevronRight size={18} className="shrink-0 text-slate-300" /></button>)}
           </div>
-          <Input
-            label="Email (optional)"
-            type="email"
-            value={form.email}
-            onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
-            placeholder="client@email.com"
-          />
-          <Input
-            label="Phone (optional)"
-            value={form.phone}
-            onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
-            placeholder="+91 98765 43210"
-          />
-          <Button type="submit" loading={saving} className="w-full">
-            {editing ? 'Update Client' : 'Add Client'}
-          </Button>
-        </form>
+
+          {!loading && filteredClients.length === 0 && <div className="px-5 py-16 text-center"><Users size={24} className="mx-auto text-slate-300" /><p className="mt-3 font-semibold text-slate-700">No clients found</p><p className="mt-1 text-sm text-slate-400">Try another search or filter.</p></div>}
+        </Card>
+      </main>
+
+      <Modal isOpen={showForm} onClose={() => setShowForm(false)} title={editing ? 'Edit client' : 'New client onboarding'} icon={<UserPlus size={18} />} size={editing ? 'md' : 'xl'}>
+        {!editing ? <ClientOnboardingForm createClient={createClient} onCreated={(clientId) => { setShowForm(false); navigate(`/clients/${clientId}`); }} onCancel={() => setShowForm(false)} /> : <form onSubmit={handleSubmit} className="space-y-4">
+          <Input label="Name" value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} required placeholder="Client / company name" />
+          <Input label="GSTIN (optional)" value={form.gstin} onChange={(event) => setForm((current) => ({ ...current, gstin: event.target.value }))} placeholder="22AAAAA0000A1Z5" />
+          <Input label="Address" value={form.address} onChange={(event) => setForm((current) => ({ ...current, address: event.target.value }))} placeholder="Full billing address" />
+          <div className="flex flex-col gap-1"><label className="text-sm font-medium text-slate-700">State</label><select value={form.state_code} onChange={(event) => { const state = INDIAN_STATES.find((item) => item.code === event.target.value); setForm((current) => ({ ...current, state_code: event.target.value, state: state?.name || '' })); }} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"><option value="">Select state</option>{INDIAN_STATES.map((state) => <option key={state.code} value={state.code}>{state.name} ({state.code})</option>)}</select></div>
+          <Input label="Email" type="email" value={form.email} onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))} placeholder="client@email.com" />
+          <Input label="Phone (optional)" value={form.phone} onChange={(event) => setForm((current) => ({ ...current, phone: event.target.value }))} placeholder="+91 98765 43210" />
+          <div className="flex flex-col gap-1"><label className="text-sm font-medium text-slate-700">Company</label><select value={form.default_company} onChange={(event) => setForm((current) => ({ ...current, default_company: event.target.value as CompanyCode }))} required className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">{COMPANY_CODES.map((company) => <option key={company} value={company}>{COMPANY_LABELS[company]}</option>)}</select></div>
+          <Button type="submit" loading={saving} className="w-full">Update client</Button>
+        </form>}
       </Modal>
 
-      {/* Delete Confirm */}
-      {confirmDelete && (
-        <Modal
-          isOpen={!!confirmDelete}
-          onClose={() => setConfirmDelete(null)}
-          title="Delete Client"
-          size="sm"
-        >
-          <p className="text-sm text-gray-600 mb-4">
-            Delete this client? This will fail if they have existing invoices.
-          </p>
-          {deleteError && (
-            <p className="text-sm text-red-600 mb-3">{deleteError}</p>
-          )}
-          <div className="flex gap-3">
-            <Button variant="danger" onClick={() => handleDelete(confirmDelete)}>
-              Delete
-            </Button>
-            <Button variant="outline" onClick={() => setConfirmDelete(null)}>
-              Cancel
-            </Button>
-          </div>
-        </Modal>
-      )}
+      <ClientWorkspaceDrawer client={selectedClient} workspaceId={workspace.id} onClose={() => setSelectedClient(null)} onEdit={(client) => { setSelectedClient(null); openEdit(client); }} onDeleted={refetch} />
     </div>
   );
 }

@@ -23,10 +23,12 @@ export interface Quotation {
   date: string;
   valid_until: string | null;
   client_id: string | null;
+  project_id?: string | null;
   client?: { name: string; gstin: string | null; address: string; state: string; state_code: string; email: string | null } | null;
   client_name_override: string | null;
   client_email_override: string | null;
   sub_brand: string;
+  company?: import('../domain/company.js').CompanyCode | null;
   title: string;
   consultant_name?: string | null;
   items: QuotationItem[];
@@ -45,9 +47,13 @@ export interface Quotation {
   notes: string | null;
   terms: string | null;
   status: 'draft' | 'sent' | 'approved' | 'rejected' | 'converted';
+  accepted_at?: string | null;
+  revision_number?: number;
+  updated_at?: string;
   converted_invoice_id: string | null;
   created_at: string;
   created_by: string;
+  project?: { id: string; name: string; company?: import('../domain/company.js').CompanyCode | null } | null;
 }
 
 interface Filters {
@@ -60,6 +66,10 @@ interface Filters {
 export function useQuotations(filters?: Filters) {
   const [quotations, setQuotations] = useState<Quotation[]>([]);
   const [loading, setLoading] = useState(true);
+  const filterStart = filters?.start;
+  const filterEnd = filters?.end;
+  const filterBrand = filters?.sub_brand;
+  const filterStatus = filters?.status;
 
   const fetch = useCallback(async () => {
     setLoading(true);
@@ -67,16 +77,20 @@ export function useQuotations(filters?: Filters) {
       .from('quotations')
       .select('*, client:clients(name, gstin, address, state, state_code, email)')
       .order('date', { ascending: false });
-    if (filters?.start) q = q.gte('date', filters.start);
-    if (filters?.end) q = q.lte('date', filters.end);
-    if (filters?.sub_brand) q = q.eq('sub_brand', filters.sub_brand);
-    if (filters?.status) q = q.eq('status', filters.status);
-    const { data } = await q;
+    if (filterStart) q = q.gte('date', filterStart);
+    if (filterEnd) q = q.lte('date', filterEnd);
+    if (filterBrand) q = q.eq('sub_brand', filterBrand);
+    if (filterStatus) q = q.eq('status', filterStatus);
+    const { data, error } = await q;
+    if (error) throw error;
     setQuotations((data || []) as Quotation[]);
     setLoading(false);
-  }, [filters?.start, filters?.end, filters?.sub_brand, filters?.status]);
+  }, [filterBrand, filterEnd, filterStart, filterStatus]);
 
-  useEffect(() => { fetch(); }, [fetch]);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Fetch the active quotation filter when it changes.
+    void fetch();
+  }, [fetch]);
 
   async function createQuotation(q: Omit<Quotation, 'id' | 'created_at' | 'client'>) {
     const { data, error } = await supabase.from('quotations').insert([q]).select().single();
