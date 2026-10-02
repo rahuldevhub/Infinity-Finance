@@ -163,8 +163,8 @@ function TransactionDrawer({ title, period, transactions, summary, onClose }: {
   return (
     <div className="fixed inset-0 z-[80] flex justify-end" role="dialog" aria-modal="true" aria-label={title}>
       <button className="absolute inset-0 bg-slate-950/25 backdrop-blur-[2px]" onClick={onClose} aria-label="Close transaction details" />
-      <aside className="relative h-full w-full sm:max-w-lg bg-white shadow-2xl flex flex-col animate-[slideIn_.22s_ease-out]">
-        <div className="px-5 sm:px-7 py-5 border-b border-gray-100 flex items-start justify-between gap-4">
+      <aside className="relative flex h-[100dvh] min-h-0 w-full flex-col bg-white shadow-2xl animate-[slideIn_.22s_ease-out] sm:max-w-lg">
+        <div className="flex shrink-0 items-start justify-between gap-4 border-b border-gray-100 px-5 py-5 sm:px-7">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-gray-400">Transaction detail</p>
             <h2 className="mt-1 text-xl font-bold" style={{ color: INK }}>{title}</h2>
@@ -174,16 +174,16 @@ function TransactionDrawer({ title, period, transactions, summary, onClose }: {
             <X size={19} />
           </button>
         </div>
-        <div className="px-5 sm:px-7 py-4 bg-slate-50 border-b border-gray-100 flex items-center justify-between">
+        <div className="flex shrink-0 items-center justify-between border-b border-gray-100 bg-slate-50 px-5 py-4 sm:px-7">
           <span className="text-sm text-gray-500">{transactions.length} transactions</span>
           <span className="text-lg font-bold" style={{ color: INK }}>{formatCurrency(total)}</span>
         </div>
         {summary && summary.length > 0 && (
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 px-5 sm:px-7 py-4 border-b border-gray-100">
+          <div className="grid shrink-0 grid-cols-2 gap-2 border-b border-gray-100 px-5 py-4 sm:grid-cols-3 sm:px-7">
             {summary.map((item) => <div key={item.label} className="rounded-xl bg-slate-50 px-3 py-2.5"><p className="text-[10px] uppercase tracking-wider text-gray-400">{item.label}</p><p className="mt-1 text-sm font-bold" style={{ color: INK }}>{item.value}</p></div>)}
           </div>
         )}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-2">
+        <div className="min-h-0 flex-1 touch-pan-y space-y-2 overflow-y-auto overscroll-contain p-4 pb-[max(1rem,env(safe-area-inset-bottom,0px))] sm:p-6">
           {transactions.length === 0 ? (
             <p className="py-16 text-center text-sm text-gray-400">No matching transactions.</p>
           ) : transactions.map((transaction) => (

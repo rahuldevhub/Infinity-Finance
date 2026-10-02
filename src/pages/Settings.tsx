@@ -135,7 +135,7 @@ export function Settings() {
               onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
               placeholder="Full business address"
             />
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Input
                 label="State"
                 value={form.state}
@@ -204,7 +204,7 @@ export function Settings() {
               onChange={(e) => setForm((f) => ({ ...f, account_number: e.target.value }))}
               placeholder="00000000000000"
             />
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Input
                 label="IFSC Code"
                 value={form.ifsc_code}

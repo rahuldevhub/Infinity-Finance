@@ -416,6 +416,7 @@ export function CashFlow() {
         actions={
           <button
             onClick={openAddForm}
+            aria-label="Add Transaction"
             className="inline-flex items-center gap-2 px-3.5 sm:px-4 py-2 text-sm font-semibold text-white rounded-xl shadow-sm transition-opacity hover:opacity-90"
             style={{ background: GREEN }}
           >

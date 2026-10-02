@@ -314,7 +314,7 @@ export function Expenses() {
       {/* Add Expense Modal */}
       <Modal isOpen={showForm} onClose={() => setShowForm(false)} title="Add Expense" size="lg">
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Input
               label="Date"
               type="date"
@@ -356,7 +356,7 @@ export function Expenses() {
             onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
             placeholder="Brief description"
           />
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <Input
               label="Taxable Amount (₹)"
               type="number"
@@ -431,7 +431,7 @@ export function Expenses() {
       {editingExpense && (
         <Modal isOpen={!!editingExpense} onClose={() => setEditingExpense(null)} title="Edit Expense" size="lg">
           <form onSubmit={handleEditSubmit} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Input
                 label="Date"
                 type="date"
@@ -471,7 +471,7 @@ export function Expenses() {
               onChange={(e) => setEditForm((f) => ({ ...f, description: e.target.value }))}
               placeholder="Brief description"
             />
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
               <Input
                 label="Taxable Amount (₹)"
                 type="number"
@@ -553,7 +553,7 @@ export function Expenses() {
       {detailExpense && (
         <Modal isOpen={!!detailExpense} onClose={() => setDetailExpense(null)} title="Expense Details" size="lg">
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4 text-sm">
+            <div className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-2">
               <div>
                 <p className="text-xs font-semibold text-gray-400 uppercase mb-1">Date</p>
                 <p className="text-gray-900 font-medium">{formatDate(detailExpense.date)}</p>

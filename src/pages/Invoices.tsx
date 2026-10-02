@@ -268,7 +268,8 @@ export function Invoices() {
               )}
             </div>
 
-            <table className="w-full text-xs border border-gray-200 rounded-lg overflow-hidden">
+            <div className="overflow-x-auto rounded-lg border border-gray-200">
+            <table className="w-full min-w-[640px] text-xs">
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-3 py-2 text-left">Description</th>
@@ -300,6 +301,7 @@ export function Invoices() {
                 ))}
               </tbody>
             </table>
+            </div>
 
             <div className="flex justify-end">
               <div className="w-56 space-y-2 text-sm">
@@ -329,7 +331,7 @@ export function Invoices() {
               <p className="text-xs text-gray-400 italic">This is not a tax invoice. No GST has been charged.</p>
             )}
 
-            <div className="flex gap-2 pt-2">
+            <div className="flex flex-wrap gap-2 pt-2">
               {settings && (
                 <Button onClick={() => handleDownloadPDF(viewInvoice)} disabled={pdfLoading}>
                   <Download size={16} /> {pdfLoading ? 'Generating…' : 'Download PDF'}

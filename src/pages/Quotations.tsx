@@ -395,7 +395,8 @@ export function Quotations() {
             </div>
 
             {/* Items table */}
-            <table className="w-full text-xs border border-gray-200 rounded-lg overflow-hidden">
+            <div className="overflow-x-auto rounded-lg border border-gray-200">
+            <table className="w-full min-w-[560px] text-xs">
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-3 py-2 text-left font-semibold text-gray-600">Description</th>
@@ -417,6 +418,7 @@ export function Quotations() {
                 ))}
               </tbody>
             </table>
+            </div>
 
             {/* Totals */}
             <div className="flex justify-end">
@@ -471,7 +473,7 @@ export function Quotations() {
             )}
 
             {/* Actions */}
-            <div className="flex gap-2 pt-2">
+            <div className="flex flex-wrap gap-2 pt-2">
               {settings && (
                 <Button onClick={() => handleDownloadPDF(viewQuotation)}>
                   <Download size={16} /> Download Order Form

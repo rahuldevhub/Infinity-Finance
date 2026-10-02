@@ -39,6 +39,7 @@
     "tests/invoiceCalculations.test.ts",
     "tests/invoiceCompatibility.test.ts",
     "tests/invoiceWorkflowContract.test.ts",
-    "tests/invoicePdfContract.test.ts"
+    "tests/invoicePdfContract.test.ts",
+    "tests/mobileOverlayContract.test.ts"
   ]
 }
