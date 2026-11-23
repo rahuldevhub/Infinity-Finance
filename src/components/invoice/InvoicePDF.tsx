@@ -163,8 +163,9 @@ function MetaRow({ icon, label, children }: { icon: IconName; label: string; chi
 
 export function InvoicePDF({ invoice }: InvoicePDFProps) {
   const brand = getBrandDetails(invoice.sub_brand || '');
+  const isInfinity = brand.brandName === BUSINESS.legalName;
   const isRitera = !invoice.sub_brand?.toLowerCase().includes('ratix');
-  const logo = getLogo(isRitera ? 'ritera' : 'ratixinfo') || PLACEHOLDER_LOGOS[isRitera ? 'ritera' : 'ratixinfo'];
+  const logo = isInfinity ? null : getLogo(isRitera ? 'ritera' : 'ratixinfo') || PLACEHOLDER_LOGOS[isRitera ? 'ritera' : 'ratixinfo'];
   const billTo = invoiceClientSnapshot(invoice);
   const discountAmount = Number(invoice.discount_amount || 0);
   const subtotal = Number(invoice.taxable_value || 0) + discountAmount;
@@ -184,9 +185,9 @@ export function InvoicePDF({ invoice }: InvoicePDFProps) {
             <View><Text style={styles.brandName}>{brand.brandName.toUpperCase()}</Text><Text style={styles.brandTagline}>{brand.tagline}</Text><View style={styles.brandUnderline} /></View>
           </View>
           <View style={styles.contactBlock}>
-            <View style={styles.contactRow}><View style={styles.contactIcon}><LineIcon name="mail" color="#ffffff" size={12} /></View><Text style={styles.contactText}>{brand.email}</Text></View>
-            <View style={styles.contactRow}><View style={styles.contactIcon}><LineIcon name="globe" color="#ffffff" size={12} /></View><Text style={styles.contactText}>{brand.website}</Text></View>
-            <View style={styles.contactRow}><View style={styles.contactIcon}><LineIcon name="phone" color="#ffffff" size={12} /></View><Text style={styles.contactText}>{brand.phone}</Text></View>
+            {brand.email && <View style={styles.contactRow}><View style={styles.contactIcon}><LineIcon name="mail" color="#ffffff" size={12} /></View><Text style={styles.contactText}>{brand.email}</Text></View>}
+            {brand.website && <View style={styles.contactRow}><View style={styles.contactIcon}><LineIcon name="globe" color="#ffffff" size={12} /></View><Text style={styles.contactText}>{brand.website}</Text></View>}
+            {brand.phone && <View style={styles.contactRow}><View style={styles.contactIcon}><LineIcon name="phone" color="#ffffff" size={12} /></View><Text style={styles.contactText}>{brand.phone}</Text></View>}
           </View>
         </View>
         <View style={styles.redRule} />
@@ -202,8 +203,8 @@ export function InvoicePDF({ invoice }: InvoicePDFProps) {
 
         <View style={styles.clientRow}>
           <View style={[styles.card, styles.cardLeft, compact ? styles.cardCompact : {}]}><View style={styles.cardHeader}><View style={styles.iconTile}><LineIcon name="building" size={16} /></View><View style={styles.cardBody}>
-            <Text style={styles.overline}>BILLED BY</Text><Text style={styles.clientName}>{BUSINESS.legalName}</Text><Text style={styles.unitText}>(Unit of {brand.brandName})</Text>
-            <Text style={styles.address}>{BUSINESS.address},</Text><Text style={styles.address}>{BUSINESS.city}, {BUSINESS.state} - {BUSINESS.pincode}</Text><Text style={styles.gstin}>GSTIN: {BUSINESS.gstin}</Text><Text style={styles.clientContact}>{brand.email}  |  {brand.phone}</Text>
+            <Text style={styles.overline}>BILLED BY</Text><Text style={styles.clientName}>{BUSINESS.legalName}</Text>{!isInfinity && <Text style={styles.unitText}>(Unit of {brand.brandName})</Text>}
+            <Text style={styles.address}>{BUSINESS.address},</Text><Text style={styles.address}>{BUSINESS.city}, {BUSINESS.state} - {BUSINESS.pincode}</Text><Text style={styles.gstin}>GSTIN: {BUSINESS.gstin}</Text><Text style={styles.clientContact}>{[brand.email, brand.phone].filter(Boolean).join('  |  ')}</Text>
           </View></View></View>
           <View style={[styles.card, compact ? styles.cardCompact : {}]}><View style={styles.cardHeader}><View style={styles.iconTile}><LineIcon name="user" size={16} /></View><View style={styles.cardBody}>
             <Text style={styles.overline}>BILLED TO</Text><Text style={styles.clientName}>{billTo.name || '-'}</Text>
@@ -236,11 +237,11 @@ export function InvoicePDF({ invoice }: InvoicePDFProps) {
         </View>
 
         <View style={[styles.notes, compact ? styles.notesCompact : {}]} wrap={false}><View style={styles.iconTile}><LineIcon name="notes" size={16} /></View><View style={styles.notesBody}>
-          <Text style={styles.notesTitle}>NOTES</Text>{invoice.notes ? <Text style={styles.noteLine}>•  {invoice.notes}</Text> : null}<Text style={styles.noteLine}>•  This is a computer-generated invoice and does not require a physical signature.</Text><Text style={styles.noteLine}>•  Subject to jurisdiction of Namakkal courts.</Text><Text style={styles.noteLine}>•  For any queries: {brand.email}</Text>
+          <Text style={styles.notesTitle}>NOTES</Text>{invoice.notes ? <Text style={styles.noteLine}>•  {invoice.notes}</Text> : null}<Text style={styles.noteLine}>•  This is a computer-generated invoice and does not require a physical signature.</Text><Text style={styles.noteLine}>•  Subject to jurisdiction of Namakkal courts.</Text>{brand.email && <Text style={styles.noteLine}>•  For any queries: {brand.email}</Text>}
         </View></View>
 
         <View style={styles.footer} fixed><View style={styles.footerBody}>
-          <View style={styles.footerItem}><View style={styles.contactIcon}><LineIcon name="globe" size={11} /></View><Text style={styles.footerText}>{brand.website}</Text></View><View style={styles.footerItem}><View style={styles.contactIcon}><LineIcon name="pin" size={11} /></View><Text style={styles.footerText}>{BUSINESS.address}, {BUSINESS.city} - {BUSINESS.pincode}</Text></View><View style={styles.footerItem}><View style={styles.contactIcon}><LineIcon name="mail" size={11} /></View><Text style={styles.footerText}>{brand.email}</Text></View><View style={styles.footerItem}><View style={styles.contactIcon}><LineIcon name="phone" size={11} /></View><Text style={styles.footerText}>{brand.phone}</Text></View>
+          {brand.website && <View style={styles.footerItem}><View style={styles.contactIcon}><LineIcon name="globe" size={11} /></View><Text style={styles.footerText}>{brand.website}</Text></View>}<View style={styles.footerItem}><View style={styles.contactIcon}><LineIcon name="pin" size={11} /></View><Text style={styles.footerText}>{BUSINESS.address}, {BUSINESS.city} - {BUSINESS.pincode}</Text></View>{brand.email && <View style={styles.footerItem}><View style={styles.contactIcon}><LineIcon name="mail" size={11} /></View><Text style={styles.footerText}>{brand.email}</Text></View>}{brand.phone && <View style={styles.footerItem}><View style={styles.contactIcon}><LineIcon name="phone" size={11} /></View><Text style={styles.footerText}>{brand.phone}</Text></View>}
         </View><View style={styles.footerStripe} /><View style={styles.footerRed} /></View>
       </Page>
     </Document>

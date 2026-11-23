@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { cashEntriesWithRazorpayFee } from '../domain/razorpayFee';
 import {
   ChevronLeft, ChevronRight, Plus, Trash2, Pencil, Download, X, Search,
   Scale, PiggyBank, Wallet, ArrowUpRight, ArrowDownRight, ArrowDown, ArrowUp,
@@ -56,6 +57,7 @@ const OUT_CATEGORIES = [
   'Personal Withdrawal',
   'Tax Payment',
   'Investment',
+  'Payment Gateway Fees',
   'Other Expense',
 ];
 
@@ -153,6 +155,7 @@ function defaultForm() {
     category: IN_CATEGORIES[0],
     description: '',
     amount: '',
+    razorpay_fee: '',
     payment_mode: 'upi' as CashTransaction['payment_mode'],
     reference: '',
     sub_brand: '',
@@ -171,12 +174,15 @@ export function CashFlow() {
   const [month, setMonth] = useState(today.getMonth());
 
   const { start, end } = getMonthRange(year, month);
-  const { transactions, loading, openingBalance, createTransaction, updateTransaction, deleteTransaction } = useCashFlow({ start, end, company });
+  const { transactions, loading, openingBalance, createTransactions, updateTransactionWithFee, getTransactionFee, deleteTransaction } = useCashFlow({ start, end, company });
 
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(defaultForm());
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState('');
+  const feeRequest = useRef(0);
+  const [loadingFee, setLoadingFee] = useState(false);
+  const [feeLoadFailed, setFeeLoadFailed] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<CashTransaction | null>(null);
 
   // ── Filter / sort state ───────────────────────────────────────────────────
@@ -327,13 +333,15 @@ export function CashFlow() {
     }));
   }
 
-  function openEdit(t: CashTransaction) {
+  async function openEdit(t: CashTransaction) {
+    const request = ++feeRequest.current;
     setForm({
       date: t.date,
       type: t.type,
       category: t.category,
       description: t.description,
       amount: String(t.amount),
+      razorpay_fee: '',
       payment_mode: t.payment_mode,
       reference: t.reference ?? '',
       sub_brand: t.sub_brand ?? '',
@@ -341,16 +349,34 @@ export function CashFlow() {
     setEditingTransaction(t);
     setFormError('');
     setShowForm(true);
+    setFeeLoadFailed(false);
+    setLoadingFee(true);
+    try {
+      const fee = await getTransactionFee(t);
+      if (request !== feeRequest.current) return;
+      setForm(current => ({ ...current, razorpay_fee: fee ? String(fee.amount) : '' }));
+    } catch (error) {
+      if (request !== feeRequest.current) return;
+      setFeeLoadFailed(true);
+      setFormError(error instanceof Error ? error.message : 'Could not load the Razorpay fee.');
+    } finally {
+      if (request === feeRequest.current) setLoadingFee(false);
+    }
   }
 
   function closeModal() {
+    feeRequest.current++;
+    setLoadingFee(false);
     setShowForm(false);
     setFormError('');
     setEditingTransaction(null);
   }
 
   function openAddForm() {
+    feeRequest.current++;
+    setLoadingFee(false);
     setForm(defaultForm());
+    setFeeLoadFailed(false);
     setEditingTransaction(null);
     setFormError('');
     setShowForm(true);
@@ -358,15 +384,16 @@ export function CashFlow() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (submitting || loadingFee || feeLoadFailed) return;
     setFormError('');
     if (!form.description.trim()) { setFormError('Description is required.'); return; }
     const amount = parseFloat(form.amount as string);
-    if (isNaN(amount) || amount <= 0) { setFormError('Enter a valid amount greater than 0.'); return; }
+    if (!Number.isFinite(amount) || amount <= 0) { setFormError('Enter a valid amount greater than 0.'); return; }
 
     setSubmitting(true);
     try {
       if (editingTransaction) {
-        await updateTransaction(editingTransaction.id, {
+        await updateTransactionWithFee(editingTransaction, {
           date: form.date,
           type: form.type,
           category: form.category,
@@ -377,9 +404,9 @@ export function CashFlow() {
           sub_brand: form.sub_brand || null,
           company,
           created_by: editingTransaction.created_by,
-        });
+        }, form.razorpay_fee);
       } else {
-        await createTransaction({
+        await createTransactions(cashEntriesWithRazorpayFee({
           date: form.date,
           type: form.type,
           category: form.category,
@@ -390,7 +417,7 @@ export function CashFlow() {
           sub_brand: form.sub_brand || null,
           company,
           created_by: user?.id ?? '',
-        });
+        }, form.razorpay_fee));
       }
       closeModal();
       setForm(defaultForm());
@@ -1188,6 +1215,28 @@ export function CashFlow() {
             </div>
           </div>
 
+          {form.type === 'in' && form.payment_mode === 'razorpay' && (
+            <div className="rounded-xl border border-green-200 bg-green-50 p-3 space-y-2">
+              <Input
+                label="Razorpay fee (₹, optional)"
+                disabled={loadingFee || feeLoadFailed}
+                type="number"
+                min={0}
+                max={Number(form.amount) || undefined}
+                step={0.01}
+                placeholder="0.00"
+                value={form.razorpay_fee}
+                onChange={(e) => setForm((f) => ({ ...f, razorpay_fee: e.target.value }))}
+              />
+              <p className="text-xs text-gray-600">Enter the full payment amount above, before fees. A fee creates a separate Money OUT transaction on the same date.</p>
+              {Number(form.razorpay_fee) > 0 && Number(form.amount) >= Number(form.razorpay_fee) && (
+                <p className="text-sm font-semibold text-green-800">
+                  Money IN {formatCurrency(Number(form.amount))} − Fee {formatCurrency(Number(form.razorpay_fee))} = Net {formatCurrency(Number(form.amount) - Number(form.razorpay_fee))}
+                </p>
+              )}
+            </div>
+          )}
+
           {/* Reference */}
           <Input
             label="Reference (optional)"
@@ -1220,8 +1269,8 @@ export function CashFlow() {
           )}
 
           {/* Submit */}
-          <Button type="submit" className="w-full" loading={submitting} style={{ background: GREEN }}>
-            {editingTransaction ? 'Update Transaction' : 'Add Transaction'}
+          <Button type="submit" className="w-full" loading={submitting || loadingFee} disabled={feeLoadFailed} style={{ background: GREEN }}>
+            {editingTransaction ? 'Update Transaction' : form.type === 'in' && form.payment_mode === 'razorpay' && Number(form.razorpay_fee) > 0 ? 'Add Payment & Fee' : 'Add Transaction'}
           </Button>
         </form>
       </Modal>

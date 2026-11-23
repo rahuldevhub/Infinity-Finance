@@ -15,6 +15,15 @@ export const BUSINESS = {
     swift: 'HDFCINBBCHE',
     upi: '7708133665-3@ybl',
   },
+  infinity: {
+    brandName: 'Infinity Enterprises',
+    tagline: '',
+    email: '',
+    phone: '',
+    website: '',
+    accentColor: '#3b82f6',
+    headerBg: '#0f172a',
+  },
   ritera: {
     brandName: 'Ritera Publishing',
     tagline: 'A Global Self-Publishing Company',
@@ -36,6 +45,7 @@ export const BUSINESS = {
 };
 
 export function getBrandDetails(subBrand: string) {
+  if (subBrand?.toLowerCase().includes('infinity')) return BUSINESS.infinity;
   if (subBrand?.toLowerCase().includes('ratix')) return BUSINESS.ratixinfo;
   return BUSINESS.ritera;
 }

@@ -92,8 +92,9 @@ interface NonGSTInvoicePDFProps {
 
 export function NonGSTInvoicePDF({ invoice }: NonGSTInvoicePDFProps) {
   const brand = getBrandDetails(invoice.sub_brand || '');
+  const isInfinity = brand.brandName === BUSINESS.legalName;
   const isRitera = !invoice.sub_brand?.toLowerCase().includes('ratix');
-  const logoSrc = getLogo(isRitera ? 'ritera' : 'ratixinfo') || PLACEHOLDER_LOGOS[isRitera ? 'ritera' : 'ratixinfo'];
+  const logoSrc = isInfinity ? null : getLogo(isRitera ? 'ritera' : 'ratixinfo') || PLACEHOLDER_LOGOS[isRitera ? 'ritera' : 'ratixinfo'];
 
   const billTo = invoiceClientSnapshot(invoice);
   const discountAmount = Number(invoice.discount_amount || 0);
@@ -144,7 +145,7 @@ export function NonGSTInvoicePDF({ invoice }: NonGSTInvoicePDFProps) {
             <Text style={s.billingName}>{brand.brandName}</Text>
             <Text style={s.billingAddr}>{BUSINESS.address}</Text>
             <Text style={s.billingAddr}>{BUSINESS.city}, {BUSINESS.state} - {BUSINESS.pincode}</Text>
-            <Text style={s.billingContact}>{brand.email} · {brand.phone}</Text>
+            <Text style={s.billingContact}>{[brand.email, brand.phone].filter(Boolean).join(' · ')}</Text>
           </View>
           <View style={s.billingBox}>
             <Text style={s.billingLabel}>BILLED TO</Text>

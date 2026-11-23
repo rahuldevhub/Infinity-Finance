@@ -10,6 +10,8 @@
     "types": ["node"]
   },
   "include": [
+    "src/domain/razorpayFee.ts",
+    "tests/razorpayFee.test.ts",
     "src/domain/paymentCalculations.ts",
     "src/domain/proformaCalculations.ts",
     "src/domain/invoiceCalculations.ts",

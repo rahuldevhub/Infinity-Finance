@@ -118,6 +118,7 @@ export function Invoices() {
             <option value="">All Brands</option>
             <option value="Ritera Publishing">Ritera Publishing</option>
             <option value="Ratixinfo Tech">Ratixinfo Tech</option>
+            <option value="Infinity Enterprises">Infinity Enterprises</option>
           </select>
           <select
             value={filterStatus}

@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- Existing form integrates polymorphic Supabase document payloads. */
 import { useState, useEffect } from 'react';
+import { COMPANY_LABELS } from '../domain/company';
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { Plus, Trash2, ArrowLeft } from 'lucide-react';
@@ -81,6 +82,13 @@ export function CreateInvoice() {
   const [discountValue, setDiscountValue] = useState('');
   const [settlementReceipts, setSettlementReceipts] = useState<SettlementReceipt[]>([]);
   const [notes, setNotes] = useState(DEFAULT_FINAL_INVOICE_NOTES);
+  function changeBillingBrand(nextBrand: string) {
+    setSubBrand(nextBrand);
+    setNotes(current => current === DEFAULT_FINAL_INVOICE_NOTES.replace('Ritera Publishing', subBrand)
+      ? DEFAULT_FINAL_INVOICE_NOTES.replace('Ritera Publishing', nextBrand)
+      : current);
+  }
+
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [loadingEdit, setLoadingEdit] = useState(isEditing);
@@ -440,13 +448,14 @@ export function CreateInvoice() {
               required
             />
             <div className="flex flex-col gap-1">
-              <label className="text-sm font-medium text-gray-700">Sub-brand</label>
+              <label htmlFor="invoice-brand" className="text-sm font-medium text-gray-700">Billing brand</label>
               <select
+                id="invoice-brand"
                 value={subBrand}
-                onChange={e => setSubBrand(e.target.value)}
+                onChange={e => changeBillingBrand(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                {(settings?.sub_brands || ['Ritera Publishing', 'Ratixinfo Tech']).map(b => (
+                {Array.from(new Set([...(settings?.sub_brands || [COMPANY_LABELS.ritera, COMPANY_LABELS.ratix]), COMPANY_LABELS.infinity, subBrand])).map(b => (
                   <option key={b} value={b}>{b}</option>
                 ))}
               </select>
